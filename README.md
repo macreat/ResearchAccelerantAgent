@@ -1,242 +1,102 @@
-# ResearchAccelerantAgent
+# GCPDS 
 
-An AI-powered, full-stack academic literature review assistant. It searches peer-reviewed databases, synthesizes cross-study findings, generates problem statements, and exports polished LaTeX/PDF documents.
+## Research Accelerant Agent & Self-Hosted Hub
 
-> **Repository:** [Macreat/ResearchAccelerantAgent](https://github.com/Macreat/ResearchAccelerantAgent)
+_The **GCPDS Research Hub**, it is a high-performance development environment and AI-powered research assistant._
 
----
-
-## Table of Contents
-
-- [Overview](#overview)
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Architecture](#architecture)
-- [Database Schema](#database-schema)
-- [Getting Started](#getting-started)
-- [Development Scripts](#development-scripts)
-- [Project Structure](#project-structure)
-- [LaTeX Prompt Template](#latex-prompt-template)
-- [License](#license)
+This project transforms a standard server into a dedicated "Self-Hosted Research Hub" designed for autonomous literature review and automated deployment.
 
 ---
 
-## Overview
+##  The Vision: Why a Self-Hosted Research Server?
 
-**ResearchAccelerantAgent** automates the heavy lifting behind academic literature reviews. Users submit a research topic, and the system orchestrates a pipeline of intelligent agents:
-
-1. **Search Agent** — Queries Semantic Scholar and OpenAlex for relevant, recent, highly-cited papers.
-2. **Extraction Agent** — Parses metadata, abstracts, methodology, and key findings.
-3. **Synthesis Agent (V2)** — Identifies overarching themes, recurring gaps, and methodological patterns across studies.
-4. **Problem Statement Generator (V3)** — Crafts a formal research gap statement grounded in the synthesized evidence.
-5. **LaTeX Engine** — Compiles everything into a publication-ready LaTeX document (and optional PDF).
-
-The application is built as a modern type-safe monolith: a React SPA talking to a Hono/tRPC backend, backed by MySQL via Drizzle ORM.
+In professional research and DevSecOps, your local machine shouldn't be a bottleneck. Moving from manual scripts to a **dedicated server service** provides:
+- **24/7 Availability:** Your research pipelines (Search → Extraction → Synthesis) run in the background without needing your laptop open.
+- **Computational Offloading:** Heavy AI tasks (Ollama/Llama 3.1) and PDF indexing are handled by server-grade hardware/GPU.
+- **Centralized Source of Truth:** A "Data Lake" for PDFs and datasets that doesn't bloat your local Git repositories.
+- **Professionalism:** Deploying tools as **Linux Services (`systemd`)** ensures resilience, auto-restarts, and a clean CLI interface (`gcpds start`).
 
 ---
 
-## Features
+##  Quick Access Dashboards
 
-| Version | Capability |
-|---------|------------|
-| **MVP** | Search academic APIs, retrieve papers, format citations (APA, MLA, Chicago, IEEE, BibTeX), and store results. |
-| **V2** | Cross-study synthesis, gap analysis, impact assessment, and future directions. |
-| **V3** | Structured problem statement generation with stakeholder analysis and consequences of inaction. |
-| **All** | LaTeX/PDF export for literature reviews, syntheses, problem statements, and full pipeline reports. |
+If you are connected to the **University Network** or **Tailscale**, you can access the hub directly:
 
-- **Real-time session tracking** — Monitor search progress from `pending` → `searching` → `extracting` → `synthesizing` → `drafting` → `completed`.
-- **Human-in-the-loop review** — Review, approve, or reject generated problem statements before export.
-- **Responsive UI** — Built with Tailwind CSS and 40+ shadcn/ui primitives.
+    - If you wanna connect via TAILSCALE, there are some features to update.
 
----
+| **CasaOS Dashboard** | [http://100.70.18.50/#/](http://100.70.18.50/#/) | [![Tailscale](https://img.shields.io/badge/Tailscale-Port_80-blue)](http://100.x.y.z:3000) | 
 
-## Tech Stack
+| **Research Agent UI** | [http://100.70.18.50:3000/docs](http://100.70.18.50:3000/docs) | [![Tailscale](https://img.shields.io/badge/Tailscale-Port_3000-blue)](http://100.x.y.z:3000) |
 
-| Layer | Technology |
-|-------|------------|
-| **Frontend** | React 19, TypeScript, Vite v7.2.4, Tailwind CSS v3.4.19, shadcn/ui, React Router v7 |
-| **Backend** | Hono (Node.js), tRPC v11, SuperJSON |
-| **Database** | MySQL, Drizzle ORM, drizzle-kit |
-| **Search APIs** | Semantic Scholar, OpenAlex |
-| **Build Tools** | Vite (frontend), esbuild (backend bundle) |
-| **Dev Server** | `@hono/vite-dev-server` (unified frontend + API HMR) |
-| **Testing** | Vitest |
-| **Lint / Format** | ESLint, Prettier |
+
+| Service | Local Link | Status |
+| :--- | :--- | :--- |
+| **Research Agent UI** | [http://192.168.0.104:3000](http://192.168.0.104:3000) | ![Online](https://img.shields.io/badge/Port-3000-brightgreen) |
+| **CasaOS Dashboard** | [http://192.168.0.104](http://192.168.0.104) | ![Online](https://img.shields.io/badge/Port-80-blue) |
+
+> **Note:** Use `local.local` instead of the IP if Avahi is active on your client.
 
 ---
 
-## Architecture
+## Infrastructure & Connectivity
 
-```
-┌─────────────────┐
-│   React SPA     │  (Vite, React Router, Tailwind, shadcn/ui)
-│   src/pages/    │
-└────────┬────────┘
-         │ tRPC over HTTP (/api/trpc)
-         ▼
-┌─────────────────┐
-│   Hono Server   │  (Node.js HTTP framework)
-│   api/boot.ts   │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────────────────────────────────┐
-│  tRPC Router (api/router.ts)                │
-│  ├── search      → academic-search.ts       │
-│  ├── synthesis   → synthesis-engine.ts      │
-│  ├── statement   → problem statement gen  │
-│  └── latex       → latex-generator.ts       │
-└─────────────────────────────────────────────┘
-         │
-         ▼
-┌─────────────────┐
-│   MySQL DB      │  (Drizzle ORM)
-│   db/schema.ts  │
-└─────────────────┘
-```
+The server is designed to operate within complex networking environments (like University campuses) using a hybrid access model.
 
-**Data Flow**
-1. The browser loads the React SPA from Vite's dev server (port 3000).
-2. Frontend calls tRPC procedures via `@trpc/react-query` over `/api/trpc`.
-3. Hono intercepts the request and forwards it to the tRPC fetch adapter.
-4. The tRPC router dispatches to domain routers (`search`, `synthesis`, `statement`, `latex`).
-5. Services persist state in MySQL using Drizzle ORM and return typed responses back to the UI.
+![net](content/net.png)
+
+### 1. The University Network (Local Access)
+The server connects to the University WiFi/Ethernet. 
+- **Local Discovery:** Uses `Avahi-daemon` for `.local` resolution.
+- **Direct SSH:** Access via `ssh server.admin` or `ssh server.coworker` when on the same network.
+- **Resilience:** If the network restricts external VPNs, local SSH remains the primary low-latency connection.
+
+### 2. Hybrid Remote Control (Tailscale & Hotspots)
+For work outside the lab or when University ports are blocked:
+- **Tailscale:** A secure mesh VPN that bypasses NAT and firewalls, allowing you to access the Agent and your files from anywhere in the world.
+- **Temporal Hotspots:** The server supports connection via mobile hotspots as a "Bridge" for initial setup or remote maintenance when primary WiFi is unavailable.
 
 ---
 
-## Database Schema
+##  The Research Accelerant Agent (v0.2-1.0)
 
-The MySQL schema (managed by Drizzle ORM) centers on five core tables:
 
-| Table | Purpose |
-|-------|---------|
-| `search_sessions` | Core entity for each literature review request (topic, filters, status, version). |
-| `papers` | Individual papers retrieved from academic APIs (metadata, abstracts, findings, methodology). |
-| `synthesis_results` | Cross-study synthesis and gap analysis output (V2). |
-| `problem_statements` | Final problem statement with optional human feedback and LaTeX output (V3). |
-| `latex_outputs` | Generated LaTeX documents and compiled PDF URLs. |
+The crown jewel of this hub is the **Research Accelerant Agent**, a full-stack academic assistant.
 
-See [`app/db/schema.ts`](app/db/schema.ts) for full column definitions and relations.
+### Core Pipeline
+1. **Search Agent:** Queries Semantic Scholar and OpenAlex for top-tier papers.
+2. **Extraction Agent:** Parses metadata and abstracts directly from local/remote sources.
+3. **Ollama Integration:** Uses local LLMs to "read" your PDFs and answer questions based on the actual content.
+4. **LaTeX Engine:** Compiles findings into publication-ready documents using professional `tcolorbox` templates.
 
----
-
-## Getting Started
-
-### Prerequisites
-
-- **Node.js** 20+
-- **MySQL** database (local or hosted)
-- **npm** (comes with Node.js)
-
-### Installation
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/Macreat/ResearchAccelerantAgent.git
-   cd ResearchAccelerantAgent/app
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Configure environment variables**
-   ```bash
-   cp .env.example .env
-   ```
-   Edit `.env` and provide:
-   ```env
-   APP_ID=your-app-id
-   APP_SECRET=your-app-secret
-   DATABASE_URL=mysql://user:password@host:port/database
-   ```
-
-4. **Push the database schema**
-   ```bash
-   npm run db:push
-   ```
-
-5. **Start the development server**
-   ```bash
-   npm run dev
-   ```
-   The app will be available at `http://localhost:3000`.
-
----
-
-## Development Scripts
-
-All commands should be run from the `app/` directory.
-
-| Script | Description |
-|--------|-------------|
-| `npm run dev` | Start Vite dev server with unified frontend + Hono API HMR |
-| `npm run build` | Build the frontend and bundle the backend for production |
-| `npm run start` | Run the production server (`dist/boot.js`) |
-| `npm run check` | Run TypeScript type checking |
-| `npm run lint` | Run ESLint |
-| `npm run format` | Run Prettier on all files |
-| `npm run test` | Run Vitest test suite |
-| `npm run db:push` | Push Drizzle schema changes to the database |
-| `npm run db:generate` | Generate a new Drizzle migration |
-| `npm run db:migrate` | Run pending Drizzle migrations |
-| `npm run db:studio` | Open Drizzle Studio (visual database explorer) |
-
----
-
-## Project Structure
-
-```
-ResearchAccelerantAgent/
-├── app/                          # Full-stack web application
-│   ├── src/                      # React frontend
-│   │   ├── pages/                # Route pages (Home, Session, History)
-│   │   ├── components/           # UI components (shadcn/ui + AppLayout)
-│   │   ├── providers/            # tRPC & React Query providers
-│   │   ├── hooks/                # Custom React hooks
-│   │   └── lib/                  # Utility functions
-│   ├── api/                      # Hono + tRPC backend
-│   │   ├── boot.ts               # Server entry point
-│   │   ├── router.ts             # tRPC app router
-│   │   ├── middleware.ts         # tRPC initialization
-│   │   ├── context.ts            # Request context
-│   │   ├── routers/              # Domain routers (search, synthesis, latex, statement)
-│   │   ├── services/             # Business logic (search, synthesis, memory, LaTeX)
-│   │   └── lib/                  # Server utilities (env, http, static files)
-│   ├── db/                       # Database layer
-│   │   ├── schema.ts             # Drizzle ORM schema
-│   │   ├── relations.ts          # Table relations
-│   │   └── migrations/           # Migration files
-│   ├── contracts/                # Shared types/errors (frontend ↔ backend)
-│   ├── vite.config.ts            # Vite configuration
-│   ├── drizzle.config.ts         # Drizzle Kit configuration
-│   └── package.json
-│
-└── prompt_framebox_fixed.tex     # Standalone LaTeX literature-review prompt template
-```
-
----
-
-## LaTeX Prompt Template
-
-The repository includes a standalone LaTeX file — `prompt_framebox_fixed.tex` — which renders a beautifully styled **literature review prompt template** using `tcolorbox`. It is useful for:
-
-- Quickly scaffolding review instructions for LLMs.
-- Academic documentation.
-- Prompt engineering experiments.
-
-Compile it with any standard LaTeX distribution:
+### Service-Oriented Architecture
+The agent is moving from a prototype to a **Global Linux Service**. Once onboarded, you can manage it from any terminal:
 ```bash
-pdflatex prompt_framebox_fixed.tex
+gcpds agent start      # Starts the API and Web UI
+gcpds dashboard        # Provides the local/remote URL for the GUI
 ```
 
 ---
 
-## License
+## Future Roadmap: Automation & CI/CD
 
-This project is proprietary and maintained by the repository owner. Please contact the owner for licensing inquiries.
+To transition from a personal lab to a collaborative research environment, we are implementing:
+
+### GitHub Actions (Self-Hosted)
+- **Automated Testing:** Every push to the repo triggers the server to run `vitest` and `eslint` to ensure the Agent stays stable.
+- **CI/CD Pipelines:** Automatic deployment of new Agent versions to the local Docker or Systemd environment.
+- **Collaborative Runners:** The server acts as a dedicated worker for GCPDS GitHub repositories, accelerating the group's overall development speed.
 
 ---
 
-*Built with React, Hono, tRPC, Drizzle, and Tailwind CSS.*
+## Tech Stack Highlights
+- **Backend:** Hono, tRPC v11, Node.js.
+- **Frontend:** React 19, Tailwind CSS, shadcn/ui.
+- **Database:** MySQL/Postgres with Drizzle ORM.
+- **AI:** Ollama (Llama 3.1) + NVIDIA Container Toolkit.
+- **OS:** Ubuntu Server 24.04 LTS + CasaOS Dashboard.
+
+_given us this final prototype as v0.2_ 
+
+![final](content/infrastructure.png)
+---
+*Maintained by the GCPDS Team. Built for the future of automated academic research.*
