@@ -1,0 +1,60 @@
+# Local Linux Research Agent Infrastructure Plan
+
+## Summary
+
+Build a CasaOS-friendly local deployment for this project using Docker Compose, PostgreSQL with pgvector as the primary database, the existing `db` folder as the document source, and the React GUI/API as the control surface.
+
+The first proof indexes/searches PDFs from `C:\Users\GCPDS\Downloads\api\db`, generates `.tex` reports from selected search results, and attempts to compile those `.tex` files into `.pdf`. The Linux target uses a mounted docs directory, local Ollama for future answer generation, and a backend service that runs on the local Linux server without relying on hosted infrastructure.
+
+## Runtime Targets
+
+- Windows proof docs path: `C:\Users\GCPDS\Downloads\api\db`
+- Container docs path: `/data/docs`
+- Container output path: `/data/output`
+- CasaOS docs path: `/DATA/AppData/research-agent/docs`
+- CasaOS output path: `/DATA/AppData/research-agent/output`
+- CasaOS database volume: `/DATA/AppData/research-agent/postgres`
+- Primary app URL: `http://<linux-server-ip>:3000`
+- API base path: `/api/trpc`
+- Linux terminal command: `gcpds agent start`
+
+## Implementation Changes
+
+- Install Node.js 20+ on the development machine and verify `node -v` and `npm -v`.
+- Use PostgreSQL + pgvector instead of the previous MySQL-oriented Drizzle setup.
+- Add Docker Compose services for the app, Postgres/pgvector, and Ollama.
+- Add a Linux terminal wrapper:
+  - `gcpds agent start`: build/start the stack and print the GUI URL.
+  - `gcpds agent stop`: stop the stack.
+  - `gcpds agent status`: show container status.
+  - `gcpds agent logs`: follow backend logs.
+- Mount the docs directory read-only and output directory read-write.
+- Add backend document endpoints:
+  - `docs.scan`: scan PDFs in `DOCS_DIR`, hash them, and store metadata.
+  - `docs.list`: list indexed documents.
+  - `docs.search`: search indexed filenames, titles, and extracted snippets.
+  - `docs.ask`: answer questions/orders from the local document index, with optional Ollama routing when enabled.
+  - `docs.generateTex`: generate a local `.tex` report from selected documents.
+  - `docs.compilePdf`: compile generated `.tex` into `.pdf` when `pdflatex` is available.
+- Add a GUI Docs page that displays service health, scan/index controls, searchable documents, selected documents, a chat-style Agent Console, and generated artifacts.
+- Keep Ollama wired as a health/runtime dependency for future local Q&A, but the first proof focuses on local document indexing/search plus `.tex` to `.pdf`.
+
+## Verification
+
+- Run `npm install` after Node is available.
+- Run `npm run check`, `npm run lint`, `npm test`, and `npm run build`.
+- Run Docker Compose and verify:
+  - API health responds.
+  - Postgres connection works.
+  - Docs mount sees PDFs from `/data/docs`.
+  - `docs.scan` indexes the mounted PDFs.
+  - GUI lists and searches indexed PDFs.
+  - `.tex` generation writes to the output directory.
+  - `.pdf` compilation succeeds when a LaTeX toolchain is installed in the app image.
+  - Container restart does not lose indexed document records.
+
+## Notes
+
+- The current Windows environment did not expose `node`, `npm`, or Docker on PATH.
+- A `winget` Node.js install was attempted, but the installer required administrator execution and failed with exit code 3.
+- The codebase is prepared so verification can continue after Node/npm and Docker are available.

@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+APP_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+COMPOSE_FILE="${GCPDS_AGENT_COMPOSE:-docker-compose.casaos.yml}"
+PORT="${GCPDS_AGENT_PORT:-3000}"
+
+usage() {
+  cat <<'EOF'
+Usage:
+  gcpds agent start      Start the local research agent stack
+  gcpds agent stop       Stop the local research agent stack
+  gcpds agent status     Show container status
+  gcpds agent logs       Follow app logs
+
+Environment:
+  GCPDS_AGENT_COMPOSE    Compose file to use, default docker-compose.casaos.yml
+  GCPDS_AGENT_PORT       GUI port, default 3000
+EOF
+}
+
+require_docker() {
+  if ! command -v docker >/dev/null 2>&1; then
+    echo "docker is required. Install Docker/CasaOS first." >&2
+    exit 1
+  fi
+}
+
+server_ip() {
+  hostname -I 2>/dev/null | awk '{print $1}'
+}
+
+if [[ "${1:-}" != "agent" ]]; then
+  usage
+  exit 1
+fi
+
+case "${2:-}" in
+  start)
+    require_docker
+    cd "${APP_DIR}"
+    docker compose -f "${COMPOSE_FILE}" up -d --build
+    IP="$(server_ip)"
+    if [[ -z "${IP}" ]]; then
+      IP="localhost"
+    fi
+    echo
+    echo "GCPDS research agent is starting."
+    echo "GUI: http://${IP}:${PORT}/docs"
+    echo "API: http://${IP}:${PORT}/api/trpc"
+    echo
+    echo "Open the GUI from your remote PC browser and use Local Docs > Agent Console."
+    ;;
+  stop)
+    require_docker
+    cd "${APP_DIR}"
+    docker compose -f "${COMPOSE_FILE}" down
+    ;;
+  status)
+    require_docker
+    cd "${APP_DIR}"
+    docker compose -f "${COMPOSE_FILE}" ps
+    ;;
+  logs)
+    require_docker
+    cd "${APP_DIR}"
+    docker compose -f "${COMPOSE_FILE}" logs -f app
+    ;;
+  *)
+    usage
+    exit 1
+    ;;
+esac

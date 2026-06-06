@@ -1,0 +1,88 @@
+LINK : Click the link to view conversation with Kimi AI Assistant https://www.kimi.com/share/19e8a5c0-c652-8c68-8000-00002d9905fd
+
+
+
+I've designed and built a full-stack research accelerant that automates your literature review workflow through three progressive versions. Here's the system architecture:
+
+
+┌─────────────────────────────────────────────────────────────────┐
+│                     FRONTEND (React 19 + TypeScript)              │
+├─────────────────────────────────────────────────────────────────┤
+│  Home Page      │  Parameterized search form with version       │
+│  (/)            │  selector (MVP / V2 / V3)                     │
+├─────────────────────────────────────────────────────────────────┤
+│  Session Page   │  Pipeline progress tracker, paper cards,     │
+│  (/session/:id) │  synthesis view, gap selector, LaTeX preview  │
+├─────────────────────────────────────────────────────────────────┤
+│  History Page   │  List all past sessions with status badges    │
+│  (/history)     │  and quick actions                            │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│              BACKEND (Hono + tRPC 11 + TypeScript)                │
+├─────────────────────────────────────────────────────────────────┤
+│  search router     │  createSession → execute → get/list/delete │
+├─────────────────────────────────────────────────────────────────┤
+│  synthesis router  │  run (cross-study synthesis) → get → update │
+├─────────────────────────────────────────────────────────────────┤
+│  statement router  │  draft → get → update → approve / reject   │
+├─────────────────────────────────────────────────────────────────┤
+│  latex router      │  generateReview / Synthesis / Statement /  │
+│                    │  FullPipeline → listBySession               │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│              SERVICES (Academic APIs + Processing)                  │
+├─────────────────────────────────────────────────────────────────┤
+│  academic-search   │  Semantic Scholar API + OpenAlex API        │
+│                    │  Parallel queries, dedup, sort by citations │
+├─────────────────────────────────────────────────────────────────┤
+│  synthesis-engine  │  Rule-based methodology classifier,         │
+│                    │  theme extraction, heuristic gap detection  │
+├─────────────────────────────────────────────────────────────────┤
+│  latex-generator   │  APA / MLA / IEEE / BibTeX citation         │
+│                    │  formatters, full document assembly         │
+├─────────────────────────────────────────────────────────────────┤
+│  memory-store      │  In-memory session persistence (ready for   │
+│                    │  Drizzle ORM upgrade to MySQL)              │
+└─────────────────────────────────────────────────────────────────┘
+
+
+--------------
+
+
+Key Features
+Academic Search
+Parallel queries to Semantic Scholar and OpenAlex APIs
+Configurable: topic, keywords, year range, citation thresholds
+Auto-deduplication by DOI, sorted by citation count
+Cross-Study Synthesis (V2)
+Automatic methodology classification (experimental, meta-analysis, qualitative, etc.)
+Theme extraction from titles and abstracts
+Gap detection with 4 prioritized gaps per review
+Human-editable synthesis fields
+Problem Statement Generator (V3)
+Structured 5-component problem statement (what is known, what is missing, stakeholders, consequences, how study addresses gap)
+Human approval gates: validation checklist + approve/reject with feedback
+Status tracking: draft → review_pending → approved/rejected
+LaTeX Export
+Publication-ready output in APA, MLA, Chicago, IEEE, or BibTeX
+Professional formatting with tcolorbox environments
+Four document types: Literature Review, Synthesis, Problem Statement, Full Pipeline
+
+
+------------------
+main prompt :
+
+Using agentic capabilities, design a research accelerant  to automate in this  workflow the search, extraction, formatting, and preliminary synthesis. o build this agent, prioritize in this order:
+MVP — The Search & Format Agent
+Automate Step 1 only: parameterized search → formatted LaTeX review output
+This alone saves hours per literature review
+V2 — The Synthesis Agent
+Add cross-study synthesis + gap suggestion (human reviews before finalizing)
+V3 — The Problem Statement Generator
+Full pipeline through Step 4, with mandatory human approval gates
+
+

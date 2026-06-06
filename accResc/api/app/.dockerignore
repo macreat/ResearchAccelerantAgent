@@ -1,0 +1,9 @@
+node_modules
+dist
+.git
+.env
+output
+*.log
+.git
+*.swp
+*.log
