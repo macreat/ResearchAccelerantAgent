@@ -1,0 +1,54 @@
+\documentclass{article}
+\usepackage[most]{tcolorbox}
+\usepackage{enumitem}
+\usepackage{xcolor}
+
+% Define custom colors
+\definecolor{promptblue}{RGB}{41, 98, 150}
+\definecolor{promptbg}{RGB}{240, 247, 255}
+\definecolor{promptborder}{RGB}{100, 160, 220}
+
+\newtcolorbox{promptframebox}[1][]{
+    colback=promptbg,
+    colframe=promptborder,
+    coltitle=white,
+    fonttitle=\bfseries\large,
+    title={\textcolor{white}{Literature Review Prompt Template}},
+    colbacktitle=promptblue,
+    boxrule=1.5pt,
+    arc=4mm,
+    left=12pt, right=12pt, top=10pt, bottom=10pt,
+    enhanced,
+    breakable,
+    drop shadow=promptblue!40!black,
+    #1
+}
+
+\begin{document}
+
+\begin{promptframebox}
+You are an expert research assistant. Produce a structured literature review summary on the topic of \textbf{[INSERT TOPIC]}. Identify \textbf{[INSERT NUMBER]} recent studies published between \textbf{[INSERT YEAR RANGE]}. For each study, provide:
+
+\begin{enumerate}[label=\arabic*.]
+    \item \textbf{Full citation} (authors, year, title, journal/source, volume/issue/pages).
+    \item \textbf{Research methodology} (e.g., experimental design, meta-analysis, qualitative case study, mixed methods, longitudinal survey, RCT, systematic review).
+    \item \textbf{Key findings} (stated in a clear, concise, evidence-based manner; include effect sizes or statistical significance where reported).
+    \item \textbf{Identified gaps or limitations} (as noted by the authors or apparent from the study design).
+    \item \textbf{Citation metrics} (minimum citation count greater than \textbf{[INSERT THRESHOLD]}).
+    \item \textbf{Direct, accessible link} (DOI, PubMed ID, or stable URL) for verification.
+\end{enumerate}
+
+\textbf{Formatting requirements:} Use clean, \LaTeX-ready formatting. Avoid \verb|\section| and \verb|\subsection| commands; use hierarchical bold headings instead.
+
+\textbf{Cross-Study Synthesis} section must address:
+\begin{itemize}
+    \item Common methodologies and analytical patterns
+    \item Overarching findings, trends, and emergent themes
+    \item Recurring gaps, limitations, and future research directions
+    \item Most impactful contributions to the field
+\end{itemize}
+
+\textit{Include only verifiable, real studies from peer-reviewed sources. Maintain an academic tone throughout.}
+\end{promptframebox}
+
+\end{document}
