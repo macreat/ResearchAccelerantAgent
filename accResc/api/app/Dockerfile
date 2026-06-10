@@ -13,7 +13,14 @@ FROM node:24-bookworm-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends texlive-latex-base texlive-latex-recommended ca-certificates \
+  && apt-get install -y --no-install-recommends \
+     texlive-latex-base \
+     texlive-latex-recommended \
+     texlive-latex-extra \
+     texlive-fonts-recommended \
+     texlive-fonts-extra \
+     texlive-science \
+     ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/package*.json ./
