@@ -1,8 +1,6 @@
-import { createRequire } from "module";
-const require = createRequire(import.meta.url);
-const pdf = require("pdf-parse");
-import { env } from "../lib/env";
-import * as fs from "fs";
+const pdf = require("pdf-parse"); 
+import { env } from "../lib/env"; 
+import * as fs from "fs"; 
 import * as fsp from "fs/promises";
 
 // ============================================================================
