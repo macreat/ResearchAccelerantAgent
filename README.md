@@ -1,4 +1,9 @@
-# GCPDS 
+# GCPDS - Research Hub & Accelerant Agent 
+
+
+![final](content/infrastructure.png)
+
+> **Technical Introduction:** For a detailed breakdown of the agent's architecture and capabilities, see the [technical and problem statement as introduction](tech.md).
 
 ## Research Accelerant Agent & Self-Hosted Hub
 
@@ -22,15 +27,15 @@ In professional research and DevSecOps, your local machine shouldn't be a bottle
 
 If you are connected to the **University Network** or **Tailscale**, you can access the hub directly:
 
-| **CasaOS Dashboard** | [http://100.70.18.50/#/](http://100.70.18.50/#/) | [![Tailscale](https://img.shields.io/badge/Tailscale-Port_80-blue)](http://100.x.y.z:3000) | 
-| **Research Agent UI** | [http://100.70.18.50:3000/docs](http://100.70.18.50:3000/docs) | [![Tailscale](https://img.shields.io/badge/Tailscale-Port_3000-blue)](http://100.x.y.z:3000) |
-
 | Service | Local Link | Status |
 | :--- | :--- | :--- |
-| **Research Agent UI** | [http://192.168.0.104:3000](http://192.168.0.104:3000) | ![Online](https://img.shields.io/badge/Port-3000-brightgreen) |
-| **CasaOS Dashboard** | [http://192.168.0.104](http://192.168.0.104) | ![Online](https://img.shields.io/badge/Port-80-blue) |
+| **Research Agent UI VIA TAILSCALE** | [http://100.70.18.50:3000/docs](http://100.70.18.50:3000/docs) | [![Tailscale](https://img.shields.io/badge/Tailscale-Port_3000-blue)](http://100.x.y.z:3000) |
+| **Research Agent UI LOCAL** | [http://192.168.0.104:3000](http://192.168.0.104:3000) | ![Online](https://img.shields.io/badge/Port-3000-brightgreen) |
 
-> **Note:** Use `local.local` instead of the IP if Avahi is active on your client.
+> **Note:** Use `user@local.local` instead of the IP if Avahi is active on your client.
+
+> **Auth:** we only got two users: `serveradmin/coworker@local.local`
+
 
 ---
 
@@ -110,6 +115,18 @@ The application is built as a modern, type-safe monolith designed for high perfo
 └─────────────────────────────────────────────┘
 ```
 
+
+   * Servidor Web (Backend): Hono (https://hono.dev/) (un framework de Node.js ultrarrápido).
+   * Protocolo de Comunicación: tRPC v11 (https://trpc.io/) (para tipos seguros entre frontend y backend).
+   * Validación de Datos: Zod (https://zod.dev/) (Es el equivalente en TypeScript a Pydantic).
+   * Base de Datos / ORM: Drizzle ORM con SQLite/PostgreSQL.
+   * Orquestación de IA: Implementación nativa en TypeScript en advanced-research-pipeline.ts que consume Ollama (Llama 3.1) vía API REST.
+
+
+
+
+
+
 ---
 
 ## Database Schema
@@ -174,16 +191,7 @@ The application will be available at `http://localhost:3000`.
 
 ---
 
-## Future Roadmap: Automation & CI/CD
 
-To transition from a personal lab to a collaborative research environment, we are implementing:
-
-### GitHub Actions (Self-Hosted)
-- **Automated Testing:** Every push triggers `vitest` and `eslint` on the server to ensure stability.
-- **CI/CD Pipelines:** Automatic deployment of new Agent versions to Docker or Systemd environments.
-- **Collaborative Runners:** Dedicated workers for GCPDS repositories, accelerating group development speed.
-
----
 
 ## Project Structure
 
@@ -197,10 +205,13 @@ ResearchAccelerantAgent/
 └── content/                      # Media and infrastructure diagrams
 ```
 
+
 ---
 
-_Project maintainted by the GCPDS Team. v0.2-1.0 Prototype Stable._
+ _*Maintained by the GCPDS Team. Built for the future of automated academic research.*_
 
-![final](content/infrastructure.png)
 ---
-*Maintained by the GCPDS Team. Built for the future of automated academic research.*
+
+
+
+_v0.2-1.0 Prototype Stable._
