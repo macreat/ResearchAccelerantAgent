@@ -18,6 +18,12 @@ import {
 import { saveTexToDocsDir } from "../services/local-docs";
 import type { PaperMetadata, SynthesisData, ProblemStatementData } from "../services/latex-generator";
 
+function sanitizeTopic(topic?: string) {
+  if (!topic) return `${Date.now()}`;
+  const cleaned = topic.replace(/[^a-zA-Z0-9]/g, "").trim();
+  return cleaned ? `${cleaned.toUpperCase()}` : `${Date.now()}`;
+}
+
 export const latexRouter = createRouter({
   generateReview: publicQuery
     .input(z.object({ sessionId: z.number() }))
@@ -63,7 +69,7 @@ export const latexRouter = createRouter({
       });
 
       // Persist to document index
-      await saveTexToDocsDir(latex, `LiteratureReview_${input.sessionId}_${Date.now()}.tex`);
+      await saveTexToDocsDir(latex, `LiteratureReview${sanitizeTopic(session.topic)}.tex`);
 
       return { latex, sessionId: input.sessionId };
     }),
@@ -121,7 +127,7 @@ export const latexRouter = createRouter({
       });
 
       // Persist to document index
-      await saveTexToDocsDir(latex, `Synthesis_${input.sessionId}_${Date.now()}.tex`);
+      await saveTexToDocsDir(latex, `synthesis${sanitizeTopic(session.topic)}.tex`);
 
       return { latex, sessionId: input.sessionId };
     }),
@@ -185,7 +191,7 @@ export const latexRouter = createRouter({
       });
 
       // Persist to document index
-      await saveTexToDocsDir(latex, `ProblemStatement_${input.sessionId}_${Date.now()}.tex`);
+      await saveTexToDocsDir(latex, `ProblemStatement${sanitizeTopic(session.topic)}.tex`);
 
       return { latex, sessionId: input.sessionId };
     }),
@@ -269,7 +275,7 @@ export const latexRouter = createRouter({
       });
 
       // Persist to document index
-      await saveTexToDocsDir(latex, `FullPipeline_${input.sessionId}_${Date.now()}.tex`);
+      await saveTexToDocsDir(latex, `FULLPIPELINE${sanitizeTopic(session.topic)}.tex`);
 
       return { latex, sessionId: input.sessionId };
     }),
@@ -322,7 +328,16 @@ export const latexRouter = createRouter({
       );
 
       if (!result.success) {
-        throw new Error(`PDF compilation failed: ${result.error}`);
+        // Return structured error information so the client UI can show logs and suggestions
+        return {
+          success: false,
+          error: result.error,
+          logPath: result.logPath,
+          logSnippet: result.logSnippet,
+          missingPackages: result.missingPackages || [],
+          suggestedPackages: result.suggestedPackages || [],
+          message: result.message || 'PDF compilation failed',
+        } as any;
       }
 
       // Update memory store
@@ -403,7 +418,7 @@ export const latexRouter = createRouter({
       });
 
       // Persist to document index
-      await saveTexToDocsDir(latex, `MethodologicalReport_${input.sessionId}_${Date.now()}.tex`);
+      await saveTexToDocsDir(latex, `MethodologicalReport${sanitizeTopic(session.topic)}.tex`);
 
       return { latex, sessionId: input.sessionId };
     }),
@@ -465,7 +480,7 @@ export const latexRouter = createRouter({
       });
 
       // Persist to document index
-      await saveTexToDocsDir(latex, `ArchitectureReport_${input.systemName}_${input.sessionId}_${Date.now()}.tex`);
+      await saveTexToDocsDir(latex, `ArchitectureReport_${input.systemName}${sanitizeTopic(session.topic)}.tex`);
 
       return { latex, sessionId: input.sessionId };
     }),

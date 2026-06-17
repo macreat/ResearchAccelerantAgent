@@ -1,7 +1,18 @@
-const pdf = require("pdf-parse"); 
-import { env } from "../lib/env"; 
-import * as fs from "fs"; 
+import { env } from "../lib/env";
+import * as fs from "fs";
 import * as fsp from "fs/promises";
+
+async function loadPdfParse() {
+  // Import the internal lib directly to avoid debug/test runner code in index.js
+  try {
+    const mod = await import('pdf-parse/lib/pdf-parse.js');
+    return (mod as any)?.default || mod;
+  } catch (e) {
+    // Fallback to main package
+    const mod = await import('pdf-parse');
+    return (mod as any)?.default || mod;
+  }
+}
 
 // ============================================================================
 // Types
@@ -58,6 +69,7 @@ export async function extractPDFText(pdfUrl: string): Promise<string> {
       buffer = await fsp.readFile(pdfUrl);
     }
 
+    const pdf = await loadPdfParse();
     const data = await pdf(buffer);
     return data.text || "";
   } catch (error) {
@@ -350,5 +362,36 @@ export async function askQuestionAboutPDF(
       sourceUrl: pdfUrl,
       confidence: 0,
     };
+  }
+}
+
+/**
+ * Extract a concise summary tailored for "Deep Research Mode".
+ * Produces a short (3-5 sentence) summary of the document's core objectives,
+ * main contributions, and where to find relevant sections for deeper inspection.
+ */
+export async function extractConciseDeepSummary(
+  pdfUrl: string
+): Promise<{ summary: string; locations: string[]; confidence: number; relatedSections: string[]; error?: string }> {
+  try {
+    const text = await extractPDFText(pdfUrl);
+
+    // Custom query focuses on deep-research needs
+    const query = `Provide a concise (3-5 sentence) summary suitable for "Deep Research Mode": describe the paper's core objective, main contributions, and list where in the document to find details (section titles or paragraph snippets). If the information isn't present, say so.`;
+
+    // Prefer LLM when available for inferential questions
+    if (env.enableLocalLlm) {
+      const analysis = await analyzePDFContentWithLLM(text, query, "Deep Research Mode Summary");
+      const related = analysis.relatedSections || [];
+      return { summary: analysis.answer, locations: related.slice(0, 5), confidence: analysis.confidence, relatedSections: related };
+    }
+
+    // Fallback heuristic
+    const summary = await generateContentSummary(text);
+    const sections = extractRelevantSections(text, "methods|results|conclusion|discussion", 4);
+    return { summary: summary, locations: sections.slice(0, 4), confidence: 0.4, relatedSections: sections };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return { summary: "", locations: [], confidence: 0, relatedSections: [], error: message };
   }
 }

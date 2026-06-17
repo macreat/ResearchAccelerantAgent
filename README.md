@@ -37,6 +37,18 @@ If you are connected to the **University Network** or **Tailscale**, you can acc
 > **Auth:** we only got two users: `serveradmin/coworker@local.local`
 
 
+## First Prototype Flow
+
+1. Made a reserach or upload a file into the local DB. 
+1.1. Open `Local Docs`.
+2. Click `Scan PDFs`.
+3. Search by file name, standard number, report name, acronym, or topic.
+4. Ask questions in `Agent Console`.
+5. Select documents.
+5.1 Ask specific questions about the selected document. 
+6. Generate a `.tex` report.
+7. Compile the `.tex` report to `.pdf`.
+
 ---
 
 ## Infrastructure & Connectivity

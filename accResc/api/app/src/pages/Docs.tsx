@@ -66,6 +66,20 @@ export default function Docs() {
     onError: (error) => toast.error(error.message),
   })
 
+  const extractDeepSummary = trpc.docs.extractDeepSummary.useMutation({
+    onSuccess: (result) => {
+      if ((result as any)?.success === false) {
+        toast.error((result as any).error || 'Deep summary failed');
+        return;
+      }
+      const res = result as any;
+      const content = `[Deep Summary of ${res.document.title}]\n\n${res.summary}\n\nLocations:\n${(res.locations||[]).join('\n')}`;
+      setMessages((current) => [...current, { role: 'agent', content }]);
+      toast.success('Deep summary generated');
+    },
+    onError: (error) => toast.error(error.message),
+  })
+
   const generateTex = trpc.docs.generateTex.useMutation({
     onSuccess: async () => {
       toast.success('Generated LaTeX report')
@@ -74,18 +88,49 @@ export default function Docs() {
     onError: (error) => toast.error(error.message),
   })
 
+  const [compileErrors, setCompileErrors] = useState<Record<string, any>>({});
+
   const compilePdf = trpc.docs.compilePdf.useMutation({
-    onSuccess: async () => {
-      toast.success('Compiled PDF report')
-      await utils.docs.artifacts.invalidate()
+    onSuccess: async (result, variables) => {
+      if ((result as any)?.success === false) {
+        const info = result as any;
+        const msg = info.message || info.error || 'PDF compilation failed';
+        toast.error(msg);
+        try {
+          const aid = (variables as any)?.artifactId;
+          if (aid) setCompileErrors((s) => ({ ...s, [aid]: info }));
+        } catch (e) { /* ignore */ }
+        return;
+      }
+
+      toast.success('Compiled PDF report');
+      await utils.docs.artifacts.invalidate();
     },
-    onError: (error) => toast.error(error.message),
+    onError: (error, variables) => {
+      toast.error(error.message)
+      try {
+        const aid = (variables as any)?.artifactId;
+        if (aid) setCompileErrors((s) => ({ ...s, [aid]: { message: error.message } }));
+      } catch (e) { /* ignore */ }
+    },
   })
 
   const compileLocalTex = trpc.docs.compileLocalTex.useMutation({
-    onSuccess: async () => {
-      toast.success('Compiled TeX to PDF')
-      await utils.docs.artifacts.invalidate()
+    onSuccess: async (result, variables) => {
+      // The server may return a structured failure object instead of throwing
+      if ((result as any)?.success === false) {
+        const info = result as any;
+        const msg = info.message || info.error || 'PDF compilation failed';
+        toast.error(msg);
+        try {
+          const sha = (variables as any)?.sha256;
+          if (sha) setCompileErrors((s) => ({ ...s, [sha]: msg }));
+        } catch (e) { /* ignore */ }
+        return;
+      }
+
+      toast.success('Compiled TeX to PDF');
+      await utils.docs.artifacts.invalidate();
     },
     onError: (error) => toast.error(error.message),
   })
@@ -154,12 +199,15 @@ export default function Docs() {
 
   const isPending = ask.isPending || deepAsk.isPending
 
+  const [includeChat, setIncludeChat] = useState(false)
   const runGenerateTex = async () => {
-    if (selected.length === 0) {
-      toast.error('Select at least one indexed PDF')
+    if (selected.length === 0 && !includeChat) {
+      toast.error('Select at least one indexed PDF or enable Include Chat History')
       return
     }
-    await generateTex.mutateAsync({ documentIds: selected, title: reportTitle })
+
+    const chatMessages = includeChat ? messages.map(m => `${m.role}: ${m.content}`) : undefined
+    await generateTex.mutateAsync({ documentIds: selected, includeChatHistory: includeChat, chatMessages, title: reportTitle, topic: query })
   }
 
   return (
@@ -219,10 +267,8 @@ export default function Docs() {
               ) : (
                 <div className="max-h-[520px] divide-y divide-slate-100 overflow-auto">
                   {documents.map((doc) => (
-                    <div
-                      key={doc.sha256}
-                      className="group flex w-full items-start gap-3 p-4 text-left hover:bg-slate-50"
-                    >
+                                      <div key={doc.sha256}>
+                                        <div className="group flex w-full items-start gap-3 p-4 text-left hover:bg-slate-50">
                       <input 
                         type="checkbox" 
                         checked={selected.includes(doc.sha256)} 
@@ -278,8 +324,36 @@ export default function Docs() {
                               <Download className="h-3.5 w-3.5" />
                             </Button>
                           )}
+                          {doc.type === 'pdf' && (
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
+                              title="Deep Summary"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                extractDeepSummary.mutate({ documentId: doc.sha256 });
+                              }}
+                              disabled={extractDeepSummary.isPending}
+                            >
+                              <FileText className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
                         </div>
                       </div>
+                    </div>
+                      {compileErrors[doc.sha256] && (
+                        <div className="mt-2 w-full text-xs text-red-600">
+                          <div className="font-medium">Compilation info:</div>
+                          <div>{typeof compileErrors[doc.sha256] === 'string' ? compileErrors[doc.sha256] : (compileErrors[doc.sha256].message || compileErrors[doc.sha256].error)}</div>
+                          {compileErrors[doc.sha256]?.suggestedPackages && compileErrors[doc.sha256].suggestedPackages.length > 0 && (
+                            <div className="mt-1">Suggested packages: {compileErrors[doc.sha256].suggestedPackages.join(', ')}</div>
+                          )}
+                          {compileErrors[doc.sha256]?.logSnippet && (
+                            <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap rounded bg-slate-50 p-2 text-xs text-slate-700">{compileErrors[doc.sha256].logSnippet}</pre>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -351,11 +425,15 @@ export default function Docs() {
         <CardContent className="space-y-4">
           <div className="grid gap-3 md:grid-cols-[1fr_auto]">
             <Input value={reportTitle} onChange={(event) => setReportTitle(event.target.value)} />
-            <Button onClick={runGenerateTex} disabled={generateTex.isPending || selected.length === 0}>
+            <Button onClick={runGenerateTex} disabled={generateTex.isPending || (selected.length === 0 && !includeChat)}>
               {generateTex.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Generate .tex
             </Button>
           </div>
++            <div className="flex items-center gap-2 mt-2">
++              <input type="checkbox" id="includeChat" checked={includeChat} onChange={(e) => setIncludeChat(e.target.checked)} className="h-4 w-4 rounded border-slate-300 text-indigo-600" />
++              <label htmlFor="includeChat" className="text-sm">Include Chat History & LLM Inferences</label>
++            </div>
           <div className="text-sm text-slate-500">{selectedDocs.length} selected document{selectedDocs.length === 1 ? '' : 's'}</div>
           <Separator />
           <div className="space-y-3">
@@ -403,6 +481,16 @@ export default function Docs() {
                       </Button>
                     )}
                   </div>
+                  {compileErrors[artifact.id] && (
+                    <div className="mt-2 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+                      <div className="font-medium">Compilation error</div>
+                      <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap text-xs">{compileErrors[artifact.id]}</pre>
+                      <div className="mt-2 flex gap-2">
+                        <Button size="sm" onClick={() => navigator.clipboard?.writeText(compileErrors[artifact.id])}>Copy log</Button>
+                        <Button size="sm" onClick={() => downloadTex.mutate({ artifactId: artifact.id })}>Download .tex</Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))
             )}

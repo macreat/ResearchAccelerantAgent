@@ -33,10 +33,14 @@ export const docsRouter = createRouter({
     .mutation(({ input }) => deepAskAboutDocument(input.documentId, input.question)),
   generateTex: publicQuery
     .input(z.object({
-      documentIds: z.array(z.string()).min(1),
+      documentIds: z.array(z.string()).optional(),
+      includeChatHistory: z.boolean().optional(),
+      chatMessages: z.array(z.string()).optional(),
       title: z.string().default("Local Research Agent Document Report"),
+      topic: z.string().optional(),
     }))
-    .mutation(({ input }) => generateTexReport(input.documentIds, input.title)),
+    .mutation(({ input }) => generateTexReport(input.documentIds || [], input.title, !!input.includeChatHistory, input.chatMessages || [], input.topic || undefined)),
+
   compilePdf: publicQuery
     .input(z.object({ artifactId: z.string() }))
     .mutation(({ input }) => compilePdf(input.artifactId)),
@@ -87,5 +91,12 @@ export const docsRouter = createRouter({
   compileLocalTex: publicQuery
     .input(z.object({ sha256: z.string() }))
     .mutation(({ input }) => compileLocalTex(input.sha256)),
+  // New: Extract concise deep-research summary for a document
+  extractDeepSummary: publicQuery
+    .input(z.object({ documentId: z.string() }))
+    .mutation(async ({ input }) => {
+      const { extractConciseDeepSummaryForDocument } = await import('../services/local-docs');
+      return extractConciseDeepSummaryForDocument(input.documentId);
+    }),
   artifacts: publicQuery.query(() => listArtifacts()),
 });

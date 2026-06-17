@@ -1,34 +1,58 @@
-- deep context on the .tex generation file
-
-- enable api as service on linux OS 
-
-- track API/service port and sync to tailscale 
 
 
-- update documentation 
+- latex generate documetaiton - change appropiate name  (TO DO / DONE>) 
+
+- deep sumaryze on actual pdf files doesnt works. 
 
 
-- latex generate documetaiton - change appropiate name  
 
-  - .PDF file generationr issue : 
-     PDF compilation failed: Command failed: pdflatex -interaction=nonstopmode -halt-on-error -output-directory=/data/output /data/docs/LiteratureReview_49_1781565142516.tex 
-    - FULL PIPELINE and PROBLEMN STATEMENT generation latex. 
+- .PDF file generationr issue : 
+     PDF compilation failed: Command failed: pdflatex -interaction=nonstopmode -halt-on-error -output-directory=/data/output /data/docs/LiteratureReview_49_1781565142516.tex <
+    - Compilation info:
+      - Failed to compile LaTeX after 3 attempts
 
-12/06/26
+      ? 
+  
 
-To fulfill your vision, you will need
+
+- enable the service docker run ALWAYS once the computers turn on  (to do via docker.config) 
+
+
+- enable API as root from INTERNET or VIA SCRIPT. < (to do )
+
+
+
+- enable api as service on linux OS (TO DO) -> could be last 
+
+-------------------------
+
+
+- deep context on the .tex generation file (TO DO -> further)
+ actualemente recibe mi petiicon como "x" es lo que busca en el archivo, pero puedo hacer preguntas de inferencias para extraer contenido 
+ como , dónde encuentro este contenido ... etc 
+
+
+- FULL PIPELINE and PROBLEMN STATEMENT generation latex. (done)
+
+- implement a tool for EXTRACT a CONCISE SUMMARY ABOUT THE deep research mode (DONE)
+
+
+
+- track API/service port and sync to tailscale (DONE) <
+- update documentation (DONE)<
+12/06/26<
+To fulfill your vision, you will need<
 to
-  pivot its agents (retriever, drafter, validator) to query regulatory databases (like ITU-R manuals) and generate step-by-step mitigation
-  plans for operators.
+  pivot its agents (retriever, drafter, validator) to query regulatory databases (like ITU-R manuals) and generate step-by-step mitigation<
+  plans for operators.<
 
-----
+----<
  
-API in order to track  GOOGLE SCHOLAR RESEARCHES 
+API in order to track  GOOGLE SCHOLAR RESEARCHES <
 
-https://serper.dev/ 
+https://serper.dev/ <
 
-FRAMEWORK agents orchestator: 
+FRAMEWORK agents orchestator: <
 
+Dify.ai: 
 
-
-Dify.ai:  
