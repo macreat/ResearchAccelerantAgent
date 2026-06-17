@@ -1,9 +1,9 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.24 (TeX Live 2022/Debian) (preloaded format=pdflatex 2026.6.17)  17 JUN 2026 20:17
+This is pdfTeX, Version 3.141592653-2.6-1.40.24 (TeX Live 2022/Debian) (preloaded format=pdflatex 2026.6.17)  17 JUN 2026 20:14
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
-**FullPipeline_49_1781565928909.simple.simple.simple.simple.tex
-(/data/docs/FullPipeline_49_1781565928909.simple.simple.simple.simple.tex
+**ProblemStatementMACHINELEARNING.simple.simple.simple.tex
+(/data/docs/ProblemStatementMACHINELEARNING.simple.simple.simple.tex
 LaTeX2e <2022-11-01> patch level 1
 L3 programming layer <2023-01-16>
 (/usr/share/texlive/texmf-dist/tex/latex/base/article.cls
@@ -62,8 +62,8 @@ File: l3backend-pdftex.def 2023-01-16 L3 backend support: PDF output (pdfTeX)
 \l__color_backend_stack_int=\count196
 \l__pdf_internal_box=\box51
 )
-(/data/docs/FullPipeline_49_1781565928909.simple.simple.simple.simple.aux)
-\openout1 = `FullPipeline_49_1781565928909.simple.simple.simple.simple.aux'.
+(/data/docs/ProblemStatementMACHINELEARNING.simple.simple.simple.aux)
+\openout1 = `ProblemStatementMACHINELEARNING.simple.simple.simple.aux'.
 
 LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 5.
 LaTeX Font Info:    ... okay on input line 5.
@@ -114,22 +114,16 @@ LaTeX Font Info:    ... okay on input line 5.
 * \@reversemarginfalse
 * (1in=72.27pt=25.4mm, 1cm=28.453pt)
 
-
-! LaTeX Error: No \title given.
-
-See the LaTeX manual or LaTeX Companion for explanation.
-Type  H <return>  for immediate help.
- ...                                              
-                                                  
-l.14 \maketitle
-                
+! Undefined control sequence.
+l.18     \hr
+            \\[0.4cm] 
 Here is how much of TeX's memory you used:
- 1289 strings out of 477975
- 21151 string characters out of 5839281
+ 1290 strings out of 477975
+ 21006 string characters out of 5839281
  1849330 words of memory out of 5000000
- 21488 multiletter control sequences out of 15000+600000
- 514124 words of font info for 35 fonts, out of 8000000 for 9000
+ 21489 multiletter control sequences out of 15000+600000
+ 514896 words of font info for 36 fonts, out of 8000000 for 9000
  59 hyphenation exceptions out of 8191
- 57i,1n,62p,201b,132s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 57i,1n,62p,196b,161s stack positions out of 10000i,1000n,20000p,200000b,200000s
 
 !  ==> Fatal error occurred, no output PDF file produced!

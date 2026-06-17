@@ -1,17 +1,13 @@
+1. PDF compilation 
+      - .PDF file generationr issue : 
+          PDF compilation failed: Command failed: pdflatex -interaction=nonstopmode -halt-on-error -output-directory=/data/output /data/docs/LiteratureReview_49_1781565142516.tex <
+          - Compilation info:
+            - Failed to compile LaTeX after 3 attempts
 
 
-- latex generate documetaiton - change appropiate name  (TO DO / DONE>) 
+2. Deep sumaryize from .pdf selected 
 
-- deep sumaryze on actual pdf files doesnt works. 
-
-
-
-- .PDF file generationr issue : 
-     PDF compilation failed: Command failed: pdflatex -interaction=nonstopmode -halt-on-error -output-directory=/data/output /data/docs/LiteratureReview_49_1781565142516.tex <
-    - Compilation info:
-      - Failed to compile LaTeX after 3 attempts
-
-      ? 
+  
   
 
 
@@ -26,6 +22,8 @@
 
 -------------------------
 
+
+- latex generate documetaiton - change appropiate name  ( DONE>) 
 
 - deep context on the .tex generation file (TO DO -> further)
  actualemente recibe mi petiicon como "x" es lo que busca en el archivo, pero puedo hacer preguntas de inferencias para extraer contenido 
@@ -56,3 +54,7 @@ FRAMEWORK agents orchestator: <
 
 Dify.ai: 
 
+
+
+
+fix(latex): make .tex filenames topic-aware & harden PDF compilation  

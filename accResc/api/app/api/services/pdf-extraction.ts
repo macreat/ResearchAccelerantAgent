@@ -254,6 +254,20 @@ export async function processPDFForAnalysis(
       };
     }
 
+    // Detect scanned PDFs (very little extracted text)
+    if (extractedText.trim().length < 200) {
+      return {
+        url: pdfUrl,
+        title,
+        success: false,
+        totalPages: 0,
+        extractedText,
+        contentSummary: "",
+        keyFindings: [],
+        error: "Extracted text is very small — PDF appears to be scanned or OCR is required. Enable OCR or run an external OCR pipeline (pdftoppm + tesseract).",
+      };
+    }
+
     const summary = await generateContentSummary(extractedText);
     const findings = await extractKeyFindings(extractedText);
     const estimatedPages = Math.ceil(extractedText.length / 3000);

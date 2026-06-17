@@ -68,11 +68,29 @@ export default function Docs() {
 
   const extractDeepSummary = trpc.docs.extractDeepSummary.useMutation({
     onSuccess: (result) => {
+      // Handle explicit failure shape from the server
       if ((result as any)?.success === false) {
         toast.error((result as any).error || 'Deep summary failed');
         return;
       }
+
       const res = result as any;
+
+      // Defensive checks for missing document or empty summary
+      if (!res || !res.document) {
+        toast.error('Deep summary returned no document metadata');
+        return;
+      }
+
+      if (!res.summary || String(res.summary).trim().length === 0) {
+        // Show a helpful message and attach any locations or error info
+        const fallback = res.error || 'No concise summary was produced. The document may be poorly OCRed or the analyzer timed out.';
+        const content = `[Deep Summary of ${res.document.title}]\n\n${fallback}\n\nLocations:\n${(res.locations||[]).join('\n')}`;
+        setMessages((current) => [...current, { role: 'agent', content }]);
+        toast.error('Deep summary generated but empty — see Agent Console for details');
+        return;
+      }
+
       const content = `[Deep Summary of ${res.document.title}]\n\n${res.summary}\n\nLocations:\n${(res.locations||[]).join('\n')}`;
       setMessages((current) => [...current, { role: 'agent', content }]);
       toast.success('Deep summary generated');

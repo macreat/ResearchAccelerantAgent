@@ -226,6 +226,46 @@ export async function compileLaTeXToPDF(
           console.warn('Simplified template compile failed:', e);
         }
       }
+
+      // Detect undefined LaTeX environments from last log and attempt to inject basic definitions
+      try {
+        const logPath = result.logPath || result.logPath === '' ? result.logPath : undefined;
+        let logContent = '';
+        if (!logPath) {
+          // Try to read the pdflatex log produced earlier based on texFilePath
+          const fallbackLog = path.join(path.dirname(texFilePath), path.basename(texFilePath).replace('.tex', '.pdflatex.log'));
+          if (fs.existsSync(fallbackLog)) logContent = fs.readFileSync(fallbackLog, 'utf-8');
+        } else if (fs.existsSync(logPath)) {
+          logContent = fs.readFileSync(logPath, 'utf-8');
+        }
+
+        const undefinedEnvs = parseUndefinedEnvironmentsFromLog(logContent);
+        if (undefinedEnvs && undefinedEnvs.length > 0) {
+          console.log('Found undefined environments in LaTeX log:', undefinedEnvs);
+          const patched = generateTexWithEnvDefinitions(texFilePath, undefinedEnvs);
+          console.log('Attempting compile with injected environment definitions:', patched);
+          const patchedResult = compileLaTeXSync(patched, finalConfig);
+          if (patchedResult.success) {
+            const patchedPdf = path.join(path.dirname(patched), path.basename(patched).replace('.tex', '.pdf'));
+            if (fs.existsSync(patchedPdf)) {
+              fs.copyFileSync(patchedPdf, pdfOutputPath);
+              fs.unlinkSync(patchedPdf);
+              const stats = fs.statSync(pdfOutputPath);
+              if (finalConfig.cleanupTemp) cleanupLatexTempFiles(path.dirname(patched), path.basename(patched, '.tex'));
+              return {
+                success: true,
+                texFilePath: patched,
+                pdfFilePath: pdfOutputPath,
+                message: `PDF generated successfully after injecting missing environment definitions: ${pdfFileName}`,
+                compilationTime: Date.now() - startTime,
+                fileSize: stats.size,
+              };
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Environment-injection fallback failed:', e);
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
       lastError = message;
@@ -392,6 +432,60 @@ function generateSimplifiedTex(originalTexPath: string): string {
   const simplePath = path.join(texDir, path.basename(originalTexPath).replace('.tex', '.simple.tex'));
   fs.writeFileSync(simplePath, simpleTex, 'utf-8');
   return simplePath;
+}
+
+// Generate a patched tex file that injects basic environment definitions for missing environments
+function generateTexWithEnvDefinitions(originalTexPath: string, envNames: string[]): string {
+  const texDir = path.dirname(originalTexPath);
+  const original = fs.readFileSync(originalTexPath, 'utf-8');
+  const marker = /\\begin\{document\}/i;
+  const parts = original.split(marker);
+  const preamble = parts.length > 1 ? parts[0] : '';
+  const rest = parts.length > 1 ? parts.slice(1).join('\\begin{document}') : original;
+
+  // Basic tcolorbox definitions to cover common custom boxes like resultbox and gapbox
+  const defs: string[] = [];
+  if (envNames.includes('resultbox') || envNames.includes('gapbox')) {
+    defs.push('\\usepackage{tcolorbox}');
+  }
+
+  // Minimal definitions — keep them simple and safe
+  if (envNames.includes('resultbox')) {
+    defs.push(`\\newtcolorbox{resultbox}[1][]\\{\\begin{tcolorbox}[colback=white,colframe=black,boxrule=0.5pt,title=\\textbf{#1}]\\end{tcolorbox}\\}`);
+  }
+  if (envNames.includes('gapbox')) {
+    defs.push(`\\newtcolorbox{gapbox}[1][]\\{\\begin{tcolorbox}[colback=gray!5,colframe=black!30,boxrule=0.3pt,title=\\textit{#1}]\\end{tcolorbox}\\}`);
+  }
+
+  const injection = defs.join('\n') + '\n';
+  const patchedPreamble = preamble + '\n' + injection + '\n\\begin{document}\n';
+  const patchedContent = patchedPreamble + rest;
+  const patchedPath = path.join(texDir, path.basename(originalTexPath).replace('.tex', '.patched.tex'));
+  fs.writeFileSync(patchedPath, patchedContent, 'utf-8');
+  return patchedPath;
+}
+
+// Parse logs for "Environment X undefined" messages
+function parseUndefinedEnvironmentsFromLog(logContent: string): string[] {
+  const envs: Set<string> = new Set();
+  if (!logContent) return [];
+  const regex = /Environment\s+([A-Za-z0-9_]+)\s+undefined/g;
+  let m: RegExpExecArray | null;
+  while ((m = regex.exec(logContent)) !== null) {
+    if (m[1]) envs.add(m[1]);
+  }
+
+  // Also look for 'Undefined control sequence' patterns that reference \begin{...}
+  const beginRegex = /\\begin\{([A-Za-z0-9_]+)\}/g;
+  while ((m = beginRegex.exec(logContent)) !== null) {
+    if (m[1]) {
+      // heuristically include if not common envs
+      const name = m[1];
+      if (!['document', 'figure', 'table', 'itemize', 'enumerate'].includes(name)) envs.add(name);
+    }
+  }
+
+  return Array.from(envs);
 }
 
 function dockerFallbackCompile(
