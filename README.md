@@ -1,7 +1,22 @@
-# GCPDS - Research Hub & Accelerant Agent 
+# GCPDS - Research Accelerant Agent 
 
 
-![final](content/infrastructure.png)
+## End-points
+
+> Main page - Dashboard
+
+![DASHBOARD](content/imgs/dashboard.png)
+
+
+> History page - sessions archive 
+
+![historyPage](content/imgs/historyPage.png)
+
+> Docs page - local database and RAG 
+
+![DocsPage](content/imgs/DocsPage.png)
+
+---
 
 > **Technical Introduction:** For a detailed breakdown of the agent's architecture and capabilities, see the [technical and problem statement as introduction](tech.md).
 
@@ -30,7 +45,7 @@ If you are connected to the **University Network** or **Tailscale**, you can acc
 | Service | Local Link | Status |
 | :--- | :--- | :--- |
 | **Research Agent UI VIA TAILSCALE** | [http://100.70.18.50:3000/docs](http://100.70.18.50:3000/docs) | [![Tailscale](https://img.shields.io/badge/Tailscale-Port_3000-blue)](http://100.x.y.z:3000) |
-| **Research Agent UI LOCAL** | [http://192.168.0.104:3000](http://192.168.0.104:3000) | ![Online](https://img.shields.io/badge/Port-3000-brightgreen) |
+| **Research Agent UI LOCAL** | [http://192.168.0.136:3000](http://192.168.0.104:3000) | ![Online](https://img.shields.io/badge/Port-3000-brightgreen) |
 
 > **Note:** Use `user@local.local` instead of the IP if Avahi is active on your client.
 
@@ -38,6 +53,7 @@ If you are connected to the **University Network** or **Tailscale**, you can acc
 
 
 ## First Prototype Flow
+
 
 1. Made a reserach or upload a file into the local DB. 
 1.1. Open `Local Docs`.
@@ -55,7 +71,7 @@ If you are connected to the **University Network** or **Tailscale**, you can acc
 
 The server is designed to operate within complex networking environments (like University campuses) using a hybrid access model.
 
-![net](content/net.png)
+![net](content/imgs/infrastructure.png)
 
 ### 1. The University Network (Local Access)
 The server connects to the University WiFi/Ethernet. 
@@ -154,6 +170,11 @@ The schema (managed by Drizzle ORM) centers on five core entities that manage th
 | `latex_outputs` | Generated LaTeX documents and compiled PDF URLs. |
 
 ---
+
+
+## Unified System Integration (API)
+
+![api](content/imgs/api.png)
 
 ## Service Management
 

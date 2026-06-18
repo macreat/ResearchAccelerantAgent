@@ -1,3 +1,6 @@
+Carlos Edmundo, Juan Carlos, Y Natalia  
+
+
 1. PDF compilation 
       - .PDF file generationr issue : 
           PDF compilation failed: Command failed: pdflatex -interaction=nonstopmode -halt-on-error -output-directory=/data/output /data/docs/LiteratureReview_49_1781565142516.tex <
@@ -8,19 +11,19 @@
 2. Deep sumaryize from .pdf selected 
 
   
-  
-
-
-- enable the service docker run ALWAYS once the computers turn on  (to do via docker.config) 
-
-
-- enable API as root from INTERNET or VIA SCRIPT. < (to do )
+  - enable API as root from INTERNET or VIA SCRIPT. < (to do )
 
 
 
 - enable api as service on linux OS (TO DO) -> could be last 
 
+
+
+
 -------------------------
+
+
+- enable the service docker run ALWAYS once the computers turn on  (to do via docker.config) (DONE)
 
 
 - latex generate documetaiton - change appropiate name  ( DONE>) 
