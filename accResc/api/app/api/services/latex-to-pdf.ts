@@ -108,16 +108,6 @@ export async function compileLaTeXToPDF(
   const pdfFileName = outputFileName || `${texFileName}.pdf`;
   const pdfOutputPath = path.join(finalConfig.outputDir, pdfFileName);
 
-  // Check for pdflatex availability
-  if (!checkPdfLatexAvailable()) {
-    return {
-      success: false,
-      texFilePath,
-      message: "pdflatex not found in system PATH",
-      error: "pdflatex not available",
-    };
-  }
-
   const startTime = Date.now();
   let lastError: string | undefined;
   let lastMissing: string[] = [];
@@ -158,6 +148,15 @@ export async function compileLaTeXToPDF(
     } catch (e) {
       lastError = e instanceof Error ? e.message : String(e);
     }
+
+    return {
+      success: false,
+      texFilePath,
+      message: "pdflatex not found and Docker fallback failed",
+      error: lastError || "pdflatex not available",
+      missingPackages: lastMissing,
+      suggestedPackages: lastSuggested,
+    };
   }
 
   // Attempt compilation with retries (local pdflatex)
@@ -399,15 +398,21 @@ function compileLaTeXSync(
     }
 
     // Fallback: run pdflatex twice to resolve references
+    // Do NOT use -halt-on-error: pdflatex should continue past non-fatal errors
+    // and still produce a .pdf file in most cases
     const runs = 2;
     let combinedAll = '';
+    let anyPassSucceeded = false;
     for (let i = 0; i < runs; i++) {
-      const spawnResult = spawnSync('pdflatex', ['-interaction=nonstopmode','-halt-on-error', `-output-directory=${texDir}`, texFileName], { cwd: texDir, encoding: 'utf-8', timeout: 120000 });
+      const spawnResult = spawnSync('pdflatex', ['-interaction=nonstopmode', `-output-directory=${texDir}`, texFileName], { cwd: texDir, encoding: 'utf-8', timeout: 120000 });
       const stdout = spawnResult.stdout || '';
       const stderr = spawnResult.stderr || '';
       combinedAll += [`--- RUN ${i+1} STDOUT ---`, stdout, `--- RUN ${i+1} STDERR ---`, stderr].join('\n') + '\n';
-      if (spawnResult.error) {
-        // continue to next run
+
+      // Check if this pass produced a PDF (even with warnings/errors)
+      const passPdfPath = path.join(texDir, texFileName.replace('.tex', '.pdf'));
+      if (fs.existsSync(passPdfPath) && fs.statSync(passPdfPath).size > 0) {
+        anyPassSucceeded = true;
       }
     }
 
@@ -416,7 +421,7 @@ function compileLaTeXSync(
     try { fs.writeFileSync(logPath, combinedAll, 'utf-8'); } catch (e) { console.warn('Failed to write pdflatex log file:', e); }
 
     const pdfPath = path.join(texDir, texFileName.replace('.tex', '.pdf'));
-    if (fs.existsSync(pdfPath)) {
+    if (anyPassSucceeded && fs.existsSync(pdfPath)) {
       return { success: true };
     }
 
@@ -545,7 +550,6 @@ function dockerFallbackCompile(
       'blang/latex:ctanfull',
       'pdflatex',
       '-interaction=nonstopmode',
-      '-halt-on-error',
       texFileName,
     ];
 

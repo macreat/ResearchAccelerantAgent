@@ -433,9 +433,9 @@ export async function compilePdf(artifactId: string) {
   const artifact = artifacts.get(artifactId);
   if (!artifact) throw new Error("Artifact not found");
 
-  const outputDir = path.dirname(artifact.texPath);
   // Use the centralized compilation service so logs and retries are captured
-  const compileResult = await compileLaTeXToPDF(artifact.texPath, undefined, getDefaultPDFConfig());
+  const pdfConfig = getDefaultPDFConfig();
+  const compileResult = await compileLaTeXToPDF(artifact.texPath, undefined, pdfConfig);
   if (!compileResult.success) {
     // Return structured information for the client to display logs and suggestions
     return {
@@ -449,12 +449,14 @@ export async function compilePdf(artifactId: string) {
     } as any;
   }
 
-  const pdfPath = artifact.texPath.replace(/\.tex$/i, ".pdf");
+  // PDF is saved by compileLaTeXToPDF to pdfConfig.outputDir
+  const pdfFileName = path.basename(artifact.texPath).replace(/\.tex$/i, ".pdf");
+  const pdfPath = path.join(pdfConfig.outputDir, pdfFileName);
   
   // Also save a copy of the PDF to DOCS_DIR for agent visibility
   try {
     const docsDir = resolveDocsDir();
-    const visiblePdfPath = path.join(docsDir, path.basename(pdfPath));
+    const visiblePdfPath = path.join(docsDir, pdfFileName);
     await fsp.copyFile(pdfPath, visiblePdfPath);
   } catch (err) {
     console.warn("Failed to copy PDF to docs directory:", err);
@@ -473,11 +475,11 @@ export async function compileLocalTex(sha256: string) {
   if (!doc) throw new Error("Document not found");
   if (doc.type !== "tex") throw new Error("Document is not a TeX file");
 
-  const outputDir = resolveOutputDir();
-  await fsp.mkdir(outputDir, { recursive: true });
+  const pdfConfig = getDefaultPDFConfig();
+  await fsp.mkdir(pdfConfig.outputDir, { recursive: true });
 
   // Use central compilation service that captures logs and retries
-  const compileResult = await compileLaTeXToPDF(doc.absolutePath, undefined, getDefaultPDFConfig());
+  const compileResult = await compileLaTeXToPDF(doc.absolutePath, undefined, pdfConfig);
   if (!compileResult.success) {
     return {
       success: false,
@@ -490,7 +492,8 @@ export async function compileLocalTex(sha256: string) {
     } as any;
   }
 
-  const pdfPath = path.join(outputDir, doc.fileName.replace(/\.tex$/i, ".pdf"));
+  // PDF is saved by compileLaTeXToPDF to pdfConfig.outputDir
+  const pdfPath = path.join(pdfConfig.outputDir, doc.fileName.replace(/\.tex$/i, ".pdf"));
   
   if (fs.existsSync(pdfPath)) {
     // Also save a copy of the PDF to DOCS_DIR for agent visibility

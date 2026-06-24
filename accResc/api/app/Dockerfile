@@ -20,6 +20,7 @@ RUN apt-get update \
      texlive-fonts-recommended \
      texlive-fonts-extra \
      texlive-science \
+     texlive-pictures \
      ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 COPY --from=build /app/dist ./dist

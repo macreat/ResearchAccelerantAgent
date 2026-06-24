@@ -15,21 +15,32 @@ jobs:
       - name: Install TeX Live (minimal set)
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y --no-install-recommends texlive-latex-recommended texlive-latex-extra texlive-fonts-recommended texlive-fonts-extra
+          sudo apt-get install -y --no-install-recommends texlive-latex-recommended texlive-latex-extra texlive-fonts-recommended texlive-fonts-extra texlive-pictures texlive-science
 
       - name: Create sample LaTeX file
         run: |
           cat > ./ci_sample.tex <<'EOF'
           \documentclass{article}
           \usepackage[utf8]{inputenc}
+          \usepackage[most]{tcolorbox}
+          \usepackage{booktabs}
+          \usepackage{longtable}
+          \usepackage{graphicx}
+          \usepackage{hyperref}
+          \definecolor{unalblue}{RGB}{0,56,101}
+          \definecolor{boxbg}{RGB}{245,248,250}
+          \newtcolorbox{resultbox}[1][]{colback=boxbg,colframe=unalblue,title=#1,fonttitle=\bfseries}
           \begin{document}
-          Hello, TeX!
+          \section*{Test Document}
+          \begin{resultbox}[Test]
+          This is a test of the LaTeX compilation pipeline with all packages used by generated documents.
+          \end{resultbox}
           \end{document}
           EOF
 
       - name: Compile sample.tex
         run: |
-          pdflatex -interaction=nonstopmode -halt-on-error -output-directory=./ ./ci_sample.tex
+          pdflatex -interaction=nonstopmode -output-directory=./ ./ci_sample.tex
 
       - name: List output
         run: ls -la ./ | sed -n '1,200p'
