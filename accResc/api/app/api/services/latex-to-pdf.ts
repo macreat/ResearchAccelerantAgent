@@ -329,6 +329,22 @@ function suggestTexlivePackagesForStyNames(styNames: string[]): string[] {
     'minted.sty': 'texlive-latex-extra',
     'fontspec.sty': 'texlive-xetex',
     'xeCJK.sty': 'texlive-xetex',
+    'longtable.sty': 'texlive-latex-recommended',
+    'booktabs.sty': 'texlive-latex-recommended',
+    'array.sty': 'texlive-latex-recommended',
+    'tabularx.sty': 'texlive-latex-recommended',
+    'float.sty': 'texlive-latex-recommended',
+    'enumitem.sty': 'texlive-latex-recommended',
+    'fancyhdr.sty': 'texlive-latex-recommended',
+    'titlesec.sty': 'texlive-latex-recommended',
+    'tocloft.sty': 'texlive-latex-recommended',
+    'setspace.sty': 'texlive-latex-recommended',
+    'microtype.sty': 'texlive-latex-recommended',
+    'wrapfig.sty': 'texlive-latex-extra',
+    'babel.sty': 'texlive-latex-recommended',
+    'inputenc.sty': 'texlive-latex-base',
+    'fontenc.sty': 'texlive-latex-base',
+    'graphicx.sty': 'texlive-latex-recommended',
   };
 
   for (const s of styNames) {
@@ -419,16 +435,37 @@ function generateSimplifiedTex(originalTexPath: string): string {
   const marker = /\\begin\{document\}/i;
   const parts = original.split(marker);
   const body = parts.length > 1 ? parts.slice(1).join('\\begin{document}') : original;
-  // Remove any \usepackage lines to avoid missing packages
-  const bodyClean = body.replace(/\\usepackage\[[^\]]*\]\{[^}]+\}/g, '').replace(/\\usepackage\{[^}]+\}/g, '');
-  // Minimal preamble
+  // Keep all \usepackage lines but strip only the ones that are known to cause issues
+  // when packages are missing from the TeX distribution
+  const bodyClean = body
+    .replace(/\\usepackage\[[^\]]*\]\{tikz\}/g, '% tikz removed for compatibility')
+    .replace(/\\usepackage\{tikz\}/g, '% tikz removed for compatibility')
+    .replace(/\\usepackage\[[^\]]*\]\{listings\}/g, '% listings removed for compatibility')
+    .replace(/\\usepackage\{listings\}/g, '% listings removed for compatibility');
+  // Strip custom environment definitions that might reference missing packages
+  const bodyCleaner = bodyClean.replace(/\\newtcolorbox\{[^}]+\}\{[^}]*\}/g, '');
+  // Robust preamble with all common packages needed by generated documents
   const simplePreamble = `\\documentclass[11pt,a4paper]{article}
 \\usepackage[utf8]{inputenc}
 \\usepackage[T1]{fontenc}
+\\usepackage[english]{babel}
 \\usepackage[margin=1in]{geometry}
+\\usepackage{amsmath,amssymb,amsfonts}
+\\usepackage{graphicx}
+\\usepackage[most]{tcolorbox}
+\\usepackage{enumitem}
+\\usepackage{booktabs}
+\\usepackage{array}
+\\usepackage{longtable}
+\\usepackage{float}
+\\definecolor{unalblue}{RGB}{0,56,101}
+\\definecolor{boxbg}{RGB}{245,248,250}
+\\newtcolorbox{resultbox}[1][]{colback=boxbg,colframe=unalblue,title=#1,fonttitle=\\bfseries}
+\\newtcolorbox{gapbox}[1][]{colback=gray!5,colframe=black!30,boxrule=0.3pt,title=\\textit{#1}}
+\\usepackage[hidelinks]{hyperref}
 \\begin{document}
 `;
-  const simpleTex = simplePreamble + '\n' + bodyClean;
+  const simpleTex = simplePreamble + '\n' + bodyCleaner;
   const simplePath = path.join(texDir, path.basename(originalTexPath).replace('.tex', '.simple.tex'));
   fs.writeFileSync(simplePath, simpleTex, 'utf-8');
   return simplePath;
@@ -451,10 +488,10 @@ function generateTexWithEnvDefinitions(originalTexPath: string, envNames: string
 
   // Minimal definitions — keep them simple and safe
   if (envNames.includes('resultbox')) {
-    defs.push(`\\newtcolorbox{resultbox}[1][]\\{\\begin{tcolorbox}[colback=white,colframe=black,boxrule=0.5pt,title=\\textbf{#1}]\\end{tcolorbox}\\}`);
+    defs.push(`\\newtcolorbox{resultbox}[1][]{colback=boxbg,colframe=unalblue,title=##1,fonttitle=\\bfseries}`);
   }
   if (envNames.includes('gapbox')) {
-    defs.push(`\\newtcolorbox{gapbox}[1][]\\{\\begin{tcolorbox}[colback=gray!5,colframe=black!30,boxrule=0.3pt,title=\\textit{#1}]\\end{tcolorbox}\\}`);
+    defs.push(`\\newtcolorbox{gapbox}[1][]{colback=gray!5,colframe=black!30,boxrule=0.3pt,title=\\textit{##1}}`);
   }
 
   const injection = defs.join('\n') + '\n';

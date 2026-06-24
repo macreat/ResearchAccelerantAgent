@@ -106,10 +106,25 @@ function latexPreamble(title: string): string {
 \\usepackage{titlesec}
 \\usepackage{tocloft}
 \\usepackage{float}
+\\usepackage{longtable}
 
 % --- Custom Colors ---
 \\definecolor{unalblue}{RGB}{0, 56, 101}
 \\definecolor{boxbg}{RGB}{245, 248, 250}
+
+% --- Custom TColorBox Environments ---
+\\newtcolorbox{resultbox}[1][]{
+    colback=boxbg,
+    colframe=unalblue,
+    title=#1,
+    fonttitle=\\bfseries
+}
+\\newtcolorbox{gapbox}[1][]{
+    colback=gray!5,
+    colframe=black!30,
+    boxrule=0.3pt,
+    title=\\textit{#1}
+}
 
 % --- Header and Footer ---
 \\pagestyle{fancy}
@@ -207,7 +222,7 @@ export function generateLiteratureReviewLaTeX(
 \\vspace{1em}`);
 
   // Individual studies
-  parts.push(`\\textbf{\\large Reviewed Studies}\\par\\vspace{0.5em}`);
+  parts.push(`\\section*{Reviewed Studies}`);
 
   papers.forEach((paper, index) => {
     const citation = formatCitation(paper, bibFormat);
@@ -244,7 +259,7 @@ export function generateLiteratureReviewLaTeX(
 
     parts.push(`
 \\vspace{1em}
-\\textbf{\\large Summary Statistics}\\par\\vspace{0.5em}
+\\section*{Summary Statistics}
 
 \\begin{center}
 \\begin{tabular}{lc}
@@ -287,7 +302,7 @@ export function generateSynthesisLaTeX(
 
   // Papers summary table
   parts.push(`
-\\textbf{\\large Studies Included in Synthesis}\\par\\vspace{0.5em}
+\\section*{Studies Included in Synthesis}
 
 \\begin{longtable}{p{5cm}cc}
 \\toprule
@@ -304,7 +319,7 @@ ${papers
 
   // Methodological Patterns
   parts.push(`
-\\textbf{\\large 1. Methodological Patterns}\\par\\vspace{0.5em}
+\\section*{Methodological Patterns}
 
 ${synthesis.methodologicalPatterns || "No methodological patterns identified."}
 
@@ -312,7 +327,7 @@ ${synthesis.methodologicalPatterns || "No methodological patterns identified."}
 
   // Overarching Findings
   parts.push(`
-\\textbf{\\large 2. Overarching Findings and Trends}\\par\\vspace{0.5em}
+\\section*{Overarching Findings and Trends}
 
 ${synthesis.overarchingFindings || "No overarching findings identified."}
 
@@ -320,7 +335,7 @@ ${synthesis.overarchingFindings || "No overarching findings identified."}
 
   // Recurring Gaps
   parts.push(`
-\\textbf{\\large 3. Recurring Gaps and Limitations}\\par\\vspace{0.5em}
+\\section*{Recurring Gaps and Limitations}
 
 ${synthesis.recurringGaps || "No recurring gaps identified."}
 
@@ -341,7 +356,7 @@ ${gap}
   // Impact Assessment
   parts.push(`
 \\vspace{1em}
-\\textbf{\\large 4. Impact Assessment}\\par\\vspace{0.5em}
+\\section*{Impact Assessment}
 
 ${synthesis.impactAssessment || "No impact assessment available."}
 
@@ -349,7 +364,7 @@ ${synthesis.impactAssessment || "No impact assessment available."}
 
   // Future Directions
   parts.push(`
-\\textbf{\\large 5. Future Research Directions}\\par\\vspace{0.5em}
+\\section*{Future Research Directions}
 
 ${synthesis.futureDirections || "No future directions identified."}
 
@@ -386,29 +401,29 @@ In the context of a research proposal, a problem statement is a concise, clear, 
 
 \\vspace{1em}
 
-\\textbf{\\large Structured Problem Statement}\\par\\vspace{0.5em}
+\\section*{Structured Problem Statement}
 
-\\textbf{1. What is Known}\\\\
+\\subsection*{1. What is Known}
 ${ps.whatIsKnown || "[To be completed]"}
 
 \\vspace{0.5em}
 
-\\textbf{2. What is Missing}\\\\
+\\subsection*{2. What is Missing}
 ${ps.whatIsMissing || selectedGap || "[To be completed]"}
 
 \\vspace{0.5em}
 
-\\textbf{3. Affected Stakeholders}\\\\
+\\subsection*{3. Affected Stakeholders}
 ${ps.affectedStakeholders || "[To be completed]"}
 
 \\vspace{0.5em}
 
-\\textbf{4. Consequences of Inaction}\\\\
+\\subsection*{4. Consequences of Inaction}
 ${ps.consequencesOfInaction || "[To be completed]"}
 
 \\vspace{0.5em}
 
-\\textbf{5. How the Study Addresses the Gap}\\\\
+\\subsection*{5. How the Study Addresses the Gap}
 ${ps.howStudyAddressesGap || "[To be completed]"}
 
 \\vspace{1em}
@@ -419,7 +434,7 @@ ${ps.fullStatement || "[Draft your full problem statement here by synthesizing t
 
 \\vspace{1em}
 
-\\textbf{\\large Validation Checklist}\\par\\vspace{0.3em}
+\\section*{Validation Checklist}
 
 \\begin{itemize}[leftmargin=*, label=$\\square$]
     \\item Is the problem \\textbf{researchable}? (Can it be investigated through empirical methods?)
@@ -537,7 +552,7 @@ function enhancedLatexPreamble(title: string, author?: string): string {
     colorlinks=true,
     linkcolor=sectionblue,
     urlcolor=sectionblue,
-    citecolor=accentgreen
+    citecolor=sectionblue
 }
 
 % === Title Block ===

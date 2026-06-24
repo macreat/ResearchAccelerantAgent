@@ -379,13 +379,30 @@ ${chatRows}
   const tex = `\\documentclass[11pt,a4paper]{article}
 \\usepackage[utf8]{inputenc}
 \\usepackage[T1]{fontenc}
+\\usepackage[english]{babel}
 \\usepackage[margin=1in]{geometry}
-\\usepackage{hyperref}
+\\usepackage{amsmath,amssymb}
+\\usepackage{graphicx}
+\\usepackage[most]{tcolorbox}
+\\usepackage{booktabs}
+\\usepackage{array}
+\\usepackage{longtable}
+\\usepackage{enumitem}
+\\usepackage{fancyhdr}
+\\usepackage{xcolor}
+\\definecolor{unalblue}{RGB}{0,56,101}
+\\definecolor{boxbg}{RGB}{245,248,250}
+\\newtcolorbox{resultbox}[1][]{colback=boxbg,colframe=unalblue,title=#1,fonttitle=\\bfseries}
+\\pagestyle{fancy}
+\\fancyhf{}
+\\rhead{\\thepage}
+\\usepackage[hidelinks]{hyperref}
 \\title{${latexEscape(reportTitle)}}
 \\author{Local Linux Research Agent}
 \\date{\\today}
 \\begin{document}
 \\maketitle
+\\thispagestyle{fancy}
 
 ${chatSection}
 \\section*{Indexed Local Documents}
