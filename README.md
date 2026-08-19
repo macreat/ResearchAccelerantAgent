@@ -86,21 +86,24 @@ For work outside the lab or when University ports are blocked:
 
 ---
 
-##  The Research Accelerant Agent (v0.2-1.0)
+##  The Research Accelerant Agent (v0.7.0)
 
 The crown jewel of this hub is the **Research Accelerant Agent**, an AI-powered, full-stack academic literature review assistant. It orchestrates a pipeline of intelligent agents to automate the heavy lifting of academic research.
 
 ### Core Pipeline & Capability
 | Version | Capability | Description |
 |---------|------------|-------------|
-| **V1 (MVP)** | **Search & Extraction** | Queries Semantic Scholar and OpenAlex. Parses metadata, abstracts, methodology, and key findings. |
+| **V1 (MVP)** | **Search & Extraction** | Queries Semantic Scholar, OpenAlex, and SerpAPI. Parses metadata, abstracts, methodology, and key findings, including deep PDF extraction. |
 | **V2** | **Cross-Study Synthesis** | Identifies overarching themes, recurring gaps, and methodological patterns across studies. |
 | **V3** | **Problem Statement** | Crafts formal research gap statements with stakeholder analysis and consequences of inaction. |
-| **ALL** | **LaTeX Engine** | Compiles findings into publication-ready documents using professional templates and `pdflatex`. |
+| **ALL** | **Report Engine** | Compiles findings into publication-ready `.tex` documents and compiles them to `.pdf` with `pdflatex`. Supports `.md` report export. |
 
 ### Key Features
 - **Real-time Session Tracking:** Monitor progress from `pending` → `searching` → `extracting` → `synthesizing` → `drafting` → `completed`.
 - **Local Document Agent:** Index, review, and compile local PDFs and `.tex` reports directly from the hub's storage.
+- **Agent Console:** Enlarged chat window with document selection for asking specific questions about selected papers.
+- **Deep-Ask:** Local LLM (Ollama/Llama 3.1) deep-answer mode directly in the chat console.
+- **Report Export:** Generate `.tex` reports, compile them to `.pdf`, or export a Markdown (`.md`) report.
 - **Ollama Integration:** Uses local LLMs (Llama 3.1) to "read" your PDFs and answer questions based on the actual content.
 - **Human-in-the-loop:** Review, approve, or reject generated problem statements before export.
 
@@ -202,7 +205,7 @@ Follow these steps to deploy the Research Hub and Agent on your local server or 
 ```bash
 # Clone the repository
 git clone https://github.com/Macreat/ResearchAccelerantAgent.git
-cd ResearchAccelerantAgent/app
+cd ResearchAccelerantAgent/accResc/api/app
 
 # Install dependencies
 npm install
@@ -222,6 +225,8 @@ npm run dev
 ```
 The application will be available at `http://localhost:3000`.
 
+For the containerized deployment (Docker Compose), see `accResc/api/app/docker/` and `docker-compose.yml`.
+
 ---
 
 
@@ -230,14 +235,32 @@ The application will be available at `http://localhost:3000`.
 
 ```
 ResearchAccelerantAgent/
-├── app/                          # Full-stack web application
-│   ├── src/                      # React frontend (pages, components, providers)
-│   ├── api/                      # Hono + tRPC backend (routers, services, boot)
-│   ├── db/                       # Database layer (schema, migrations)
-│   └── contracts/                # Shared types (frontend ↔ backend)
-└── content/                      # Media and infrastructure diagrams
+├── accResc/api/app/             # Full-stack web application
+│   ├── src/                     # React frontend (pages, components, providers)
+│   ├── api/                     # Hono + tRPC backend (routers, services, boot)
+│   ├── db/                      # Database layer (schema, migrations)
+│   ├── contracts/               # Shared types (frontend ↔ backend)
+│   └── docker/                  # Containerized deployment (Dockerfile, compose)
+└── content/                     # Media and infrastructure diagrams
 ```
 
+
+---
+
+## Releases & Version History
+
+Current release: **v0.7.0** - _enlarge chat window, add MD export, enable local LLM deep-ask_.
+
+| Version | Highlights |
+|---------|------------|
+| **v0.7.0** | Enlarged Agent Console chat window, Markdown (`.md`) report export, local LLM deep-ask mode. |
+| **v0.6.1** | LaTeX fixes: resolved "PDF not found" - halt-on-error, end-document duplication, directory mismatch, dead docker fallback code. |
+| **v0.6** | Restructured `.tex` generation with proper sectioning, package validation, and Markdown sanitization. |
+| **v0.5** | Docker: auto-restart for services on host reboot. |
+| **v0.4** | LaTeX-PDF: topic-aware `.tex` filenames and hardened PDF compilation. |
+| **v0.3** | Integrated SerpAPI, deep PDF extraction, and local output storage reporting. |
+| **v0.2** | Stabilized API and Linux deployment infrastructure. |
+| **v0.1** | Initial release of the Research Accelerant Agent. |
 
 ---
 
@@ -245,6 +268,4 @@ ResearchAccelerantAgent/
 
 ---
 
-
-
-_v0.2-1.0 Prototype Stable._
+_v0.7.0 Stable._
