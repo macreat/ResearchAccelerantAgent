@@ -106,6 +106,14 @@ export default function Docs() {
     onError: (error) => toast.error(error.message),
   })
 
+  const generateMd = trpc.docs.generateMd.useMutation({
+    onSuccess: async () => {
+      toast.success('Generated Markdown report')
+      await utils.docs.artifacts.invalidate()
+    },
+    onError: (error) => toast.error(error.message),
+  })
+
   const [compileErrors, setCompileErrors] = useState<Record<string, any>>({});
 
   const compilePdf = trpc.docs.compilePdf.useMutation({
@@ -179,6 +187,19 @@ export default function Docs() {
     onError: (error) => toast.error(error.message),
   })
 
+  const downloadMd = trpc.docs.downloadMd.useMutation({
+    onSuccess: (result) => {
+      const link = document.createElement('a')
+      link.href = `data:text/markdown;base64,${result.data}`
+      link.download = result.filename
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      toast.success('Download started')
+    },
+    onError: (error) => toast.error(error.message),
+  })
+
   const documents = docs.data ?? []
   const selectedDocs = useMemo(
     () => documents.filter((doc) => selected.includes(doc.sha256)),
@@ -228,6 +249,16 @@ export default function Docs() {
     await generateTex.mutateAsync({ documentIds: selected, includeChatHistory: includeChat, chatMessages, title: reportTitle, topic: query })
   }
 
+  const runGenerateMd = async () => {
+    if (selected.length === 0 && !includeChat) {
+      toast.error('Select at least one indexed PDF or enable Include Chat History')
+      return
+    }
+
+    const chatMessages = includeChat ? messages.map(m => `${m.role}: ${m.content}`) : undefined
+    await generateMd.mutateAsync({ documentIds: selected, includeChatHistory: includeChat, chatMessages, title: reportTitle, topic: query })
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-2">
@@ -251,7 +282,7 @@ export default function Docs() {
         </Card>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_420px]">
+      <div className="grid gap-6 lg:grid-cols-[1fr_560px]">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -380,7 +411,8 @@ export default function Docs() {
           </CardContent>
         </Card>
 
-        <Card>
+        {/* Console card: fixed viewport height minus 220px of page chrome above; the message list scrolls internally so the composer never overflows the card. min-h-[480px] keeps the composer usable on short viewports (page scrolls instead). */}
+        <Card className="flex flex-col lg:h-[calc(100vh-220px)] min-h-[480px]">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <MessageSquare className="h-5 w-5 text-indigo-600" />
@@ -388,8 +420,8 @@ export default function Docs() {
             </CardTitle>
             <CardDescription>Ask local questions or give orders related to the indexed docs.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="h-[360px] space-y-3 overflow-auto rounded-lg border border-slate-200 bg-slate-50 p-3">
+          <CardContent className="flex flex-1 min-h-0 flex-col space-y-4">
+            <div className="flex-1 min-h-0 space-y-3 overflow-auto rounded-lg border border-slate-200 bg-slate-50 p-3">
               {messages.length === 0 ? (
                 <div className="text-sm text-slate-500">
                   Try: "What ICNIRP documents are available?" or "Generate a report from the selected standards."
@@ -413,9 +445,9 @@ export default function Docs() {
               value={question}
               onChange={(event) => setQuestion(event.target.value)}
               placeholder="Ask about local documents, standards, reports, or generated outputs"
-              className="min-h-[90px]"
+              className="min-h-[90px] shrink-0"
             />
-            <div className="flex items-center space-x-2 py-1">
+            <div className="flex shrink-0 items-center space-x-2 py-1">
               <input 
                 type="checkbox" 
                 id="deepMode" 
@@ -427,7 +459,7 @@ export default function Docs() {
                 Deep Research Mode (Full PDF Extraction)
               </label>
             </div>
-            <Button onClick={submitQuestion} disabled={isPending || !question.trim()} className="w-full">
+            <Button onClick={submitQuestion} disabled={isPending || !question.trim()} className="w-full shrink-0">
               {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Send to Agent
             </Button>
@@ -441,17 +473,21 @@ export default function Docs() {
           <CardDescription>Selected documents are converted into a local .tex report. PDF compilation requires pdflatex.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+          <div className="grid gap-3 md:grid-cols-[1fr_auto_auto]">
             <Input value={reportTitle} onChange={(event) => setReportTitle(event.target.value)} />
             <Button onClick={runGenerateTex} disabled={generateTex.isPending || (selected.length === 0 && !includeChat)}>
               {generateTex.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Generate .tex
             </Button>
+            <Button variant="outline" onClick={runGenerateMd} disabled={generateMd.isPending || (selected.length === 0 && !includeChat)}>
+              {generateMd.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Generate .md
+            </Button>
           </div>
-+            <div className="flex items-center gap-2 mt-2">
-+              <input type="checkbox" id="includeChat" checked={includeChat} onChange={(e) => setIncludeChat(e.target.checked)} className="h-4 w-4 rounded border-slate-300 text-indigo-600" />
-+              <label htmlFor="includeChat" className="text-sm">Include Chat History & LLM Inferences</label>
-+            </div>
+          <div className="flex items-center gap-2 mt-2">
+            <input type="checkbox" id="includeChat" checked={includeChat} onChange={(e) => setIncludeChat(e.target.checked)} className="h-4 w-4 rounded border-slate-300 text-indigo-600" />
+            <label htmlFor="includeChat" className="text-sm">Include Chat History & LLM Inferences</label>
+          </div>
           <div className="text-sm text-slate-500">{selectedDocs.length} selected document{selectedDocs.length === 1 ? '' : 's'}</div>
           <Separator />
           <div className="space-y-3">
@@ -462,30 +498,47 @@ export default function Docs() {
                 <div key={artifact.id} className="flex flex-col gap-2 rounded-lg border border-slate-200 p-3 md:flex-row md:items-center md:justify-between">
                   <div>
                     <div className="font-medium text-slate-800">{artifact.title}</div>
-                    <div className="text-xs text-slate-500">{artifact.texPath}</div>
+                    {artifact.texPath && <div className="text-xs text-slate-500">{artifact.texPath}</div>}
+                    {artifact.mdPath && <div className="text-xs text-slate-500">{artifact.mdPath}</div>}
                     {artifact.pdfPath && <div className="text-xs text-emerald-600">{artifact.pdfPath}</div>}
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => compilePdf.mutate({ artifactId: artifact.id })} 
-                      disabled={compilePdf.isPending}
-                    >
-                      {compilePdf.isPending && artifact.id === compilePdf.variables?.artifactId && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      <Zap className="w-3.5 h-3.5 mr-2" />
-                      Compile PDF
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => downloadTex.mutate({ artifactId: artifact.id })} 
-                      disabled={downloadTex.isPending}
-                    >
-                      {downloadTex.isPending && artifact.id === downloadTex.variables?.artifactId && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      <FileType className="w-3.5 h-3.5 mr-2" />
-                      Download .tex
-                    </Button>
+                    {!artifact.mdPath && (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => compilePdf.mutate({ artifactId: artifact.id })} 
+                        disabled={compilePdf.isPending}
+                      >
+                        {compilePdf.isPending && artifact.id === compilePdf.variables?.artifactId && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        <Zap className="w-3.5 h-3.5 mr-2" />
+                        Compile PDF
+                      </Button>
+                    )}
+                    {artifact.texPath && (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => downloadTex.mutate({ artifactId: artifact.id })} 
+                        disabled={downloadTex.isPending}
+                      >
+                        {downloadTex.isPending && artifact.id === downloadTex.variables?.artifactId && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        <FileType className="w-3.5 h-3.5 mr-2" />
+                        Download .tex
+                      </Button>
+                    )}
+                    {artifact.mdPath && (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => downloadMd.mutate({ artifactId: artifact.id })} 
+                        disabled={downloadMd.isPending}
+                      >
+                        {downloadMd.isPending && artifact.id === downloadMd.variables?.artifactId && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        <FileText className="w-3.5 h-3.5 mr-2" />
+                        Download .md
+                      </Button>
+                    )}
                     {artifact.pdfPath && (
                       <Button 
                         variant="secondary" 

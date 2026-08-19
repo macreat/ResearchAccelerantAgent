@@ -24,6 +24,7 @@ export interface GeneratedArtifact {
   title: string;
   texPath: string;
   pdfPath?: string;
+  mdPath?: string;
   createdAt: Date;
 }
 
@@ -319,6 +320,16 @@ export async function getTexBuffer(texPath: string): Promise<Buffer> {
 }
 
 /**
+ * Get Markdown buffer for downloading
+ */
+export async function getMdBuffer(mdPath: string): Promise<Buffer> {
+  if (!fs.existsSync(mdPath)) {
+    throw new Error(`Markdown file not found: ${mdPath}`);
+  }
+  return await fsp.readFile(mdPath);
+}
+
+/**
  * Save arbitrary LaTeX content to the docs directory for agent visibility
  */
 export async function saveTexToDocsDir(content: string, filename: string): Promise<string> {
@@ -425,6 +436,87 @@ ${rows}
     await fsp.writeFile(visibleTexPath, tex, "utf-8"); // Visible to the agent
   }
   const artifact: GeneratedArtifact = { id: artifactId, title: reportTitle, texPath, createdAt: new Date() };
+  artifacts.set(artifactId, artifact);
+  return artifact;
+}
+
+export async function generateMdReport(documentIds: string[], title: string, includeChatHistory: boolean = false, chatMessages: string[] = [], topic?: string) {
+  const selected = listDocuments().filter((doc) => documentIds.includes(doc.sha256));
+
+  if (selected.length === 0 && !includeChatHistory) {
+    throw new Error("No indexed local documents selected and no chat history requested");
+  }
+
+  const outputDir = resolveOutputDir();
+  await fsp.mkdir(outputDir, { recursive: true });
+
+  // We also save a copy in DOCS_DIR so the agent can "see" and re-index it if needed
+  const docsDir = resolveDocsDir();
+
+  const artifactId = crypto.randomUUID();
+  const safeFile = `${artifactId}.md`;
+  const mdPath = path.join(outputDir, safeFile);
+  const baseTitle = title.trim() || "Local Research Agent Document Report";
+  const reportTitle = topic && topic.trim() ? `${topic.trim()} - ${baseTitle}` : baseTitle;
+
+  // Also save to docs folder for agent visibility; include topic in filename when present
+  const safeTitleForFile = (topic && topic.trim() ? `${topic.trim()}_${baseTitle}` : baseTitle).replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_\-\.]/g, '_');
+  const visibleMdPath = path.join(docsDir, `Report_${safeTitleForFile}_${artifactId.substring(0, 8)}.md`);
+
+  const metadataRows = [
+    `# ${reportTitle}`,
+    "",
+    `**Date:** ${new Date().toISOString()}`,
+  ];
+  if (topic && topic.trim()) {
+    metadataRows.push(`**Topic:** ${topic.trim()}`);
+  }
+
+  const docRows = selected.map((doc, index) => [
+    `${index + 1}. **${doc.title}** - ${doc.snippet}`,
+    `   - File: ${doc.relativePath}`,
+    `   - SHA-256: \`${doc.sha256}\``,
+    `   - Size: ${doc.sizeBytes} bytes`,
+    `   - Type: ${doc.type.toUpperCase()}`,
+  ].join("\n"));
+
+  // Chat history section if requested
+  let chatSection = "";
+  if (includeChatHistory && chatMessages.length > 0) {
+    const chatRows = chatMessages.map((m) => {
+      const separator = m.indexOf(":");
+      if (separator > 0) {
+        const role = m.slice(0, separator).trim().toLowerCase();
+        if (role === "user" || role === "agent") {
+          const body = m.slice(separator + 1).trim();
+          return `### ${role === "user" ? "User" : "Agent"}\n\n${body}`;
+        }
+      }
+      return m;
+    }).join("\n\n");
+    chatSection = `## Answers & LLM Inferences\n\n${chatRows}\n`;
+  }
+
+  const sourcesRows = selected.map((doc, index) => `${index + 1}. ${doc.title}`).join("\n");
+
+  const md = [
+    ...metadataRows,
+    "",
+    "## Selected Documents",
+    "",
+    docRows.length > 0 ? docRows.join("\n\n") : "_No indexed documents were selected._",
+    "",
+    chatSection,
+    "## Sources",
+    "",
+    sourcesRows,
+    "",
+  ].join("\n");
+
+  await fsp.writeFile(mdPath, md, "utf-8");
+  await fsp.writeFile(visibleMdPath, md, "utf-8"); // Visible to the agent
+
+  const artifact: GeneratedArtifact = { id: artifactId, title: reportTitle, texPath: "", mdPath, createdAt: new Date() };
   artifacts.set(artifactId, artifact);
   return artifact;
 }

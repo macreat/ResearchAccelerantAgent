@@ -1,0 +1,2332 @@
+
+
+SDR-Based Spectrum Monitoring System for FM Broadcast
+Compliance Assessment
+Introduction
+– Purpose and Scope.  This document specifies the architecture, measurement framework, and pro-
+cessing algorithms for a Software-Defined Radio (SDR) based FM broadcast compliance mon-
+itoring system.  It is intended for:
+  RF engineers designing and deploying sensor nodes;
+  Regulatory bodies evaluating technical adequacy and metrological traceability;
+  Software developers implementing DSP processing pipelines;
+  System operators responsible for calibration, validation, and evidence archiving.
+This  document  is  primarily  a  framework  and  requirements  specification.   The  framework
+addresses  the  complete  monitoring  chain  with  explicit  treatment  of  calibration  hierarchy,
+uncertainty propagation, node health, multi-node coordination, and audit-ready reporting.
+– Regulatory Context.  The  system  targets  compliance  assessment  under  the  following  regulatory
+and technical frameworks:
+ FCC Part 73 (United States):  Technical standards for FM broadcast service, including
+carrier frequency tolerance, occupied bandwidth, and emission mask requirements;
+ ANE Resolucin 105 (applicable jurisdiction):  National regulatory provisions governing
+FM broadcast technical parameters;
+ ITU-R BS.412:  International technical standards for FM sound broadcasting;
+ ISO/IEC 17025:   General  requirements  for  the  competence  of  testing  and  calibration
+laboratories, applicable to measurement traceability and uncertainty evaluation.
+For each deployment, the applicable regulatory basis shall be explicitly identified in the sys-
+tem configuration, measurement procedure, and reporting policy.  All reported measurands,
+decision outcomes, and compliance determinations shall be traceable to the governing rule set,
+the calibration state of the measurement chain, and the documented processing and decision
+procedure used to produce the result.
+1
+1
+Throughout  this  document,  the  key  words  “shall”,  “shall  not”,  “should”,  “should  not”,  and  “may”  are  to  be
+interpreted as described in RFC 2119 [?].  Requirements denoted by “shall” are mandatory for compliance with this
+specification.
+1
+
+1. System-Level Requirements for SDR-Based Monitoring Architectures
+–  Reconfigurability  and  Flexibility:   The  SDR  platform  shall  support  changes  in  monitoring
+objectives,  signal-processing  parameters,  and  compliance  algorithms  without  hardware  re-
+design.  Functions such as demodulation,  channelization,  thresholding,  occupancy analysis,
+and report generation shall be implemented in software to permit controlled adaptation to
+evolving regulatory requirements, extension to adjacent bands, and integration of validated
+processing methods.  Any software or firmware change affecting measurement outputs shall
+be documented, version-controlled, and revalidated.
+–  Cost and Deployability:  The monitoring node shall be economically deployable at scale while
+preserving the performance required for regulatory use.  Low-cost SDR hardware and embed-
+ded processing platforms may be used, provided they do not compromise frequency accuracy,
+calibration validity, or operational reliability.  The final architecture shall be justified on the
+basis of both technical adequacy and total deployment cost.
+–  Remote  Monitoring  and  Data  Transport:  The system shall support remote transmission of
+measurement  metadata,  system-health  information,  and  authorized  derived  products  to  a
+centralized server through IP-based networks.  The architecture shall support continuous or
+scheduled delivery, local buffering during link outages, and reliable upload upon reconnection.
+Data products,  transport rates,  retention policies,  and latency constraints shall be defined
+according to the monitoring mission, legal requirements, and available network capacity.
+–  Cybersecurity  and  Access  Control:   Data  in  transit  shall  be  protected  using  authenticated
+encryption,  and  stored  records  shall  be  protected  according  to  the  system  security  policy.
+Administrative and operator access shall be controlled through authenticated and authorized
+mechanisms.  Audit logs shall record configuration changes, software updates, user actions,
+and remotely triggered monitoring operations.
+–  Multi-Channel  Monitoring  Capacity:   The  DSP  pipeline  shall  support  real-time  demodula-
+tion  and  compliance  analysis  of  multiple  FM  broadcast  channels  within  the  instantaneous
+observation bandwidth and tuning constraints of the SDR front-end and processing platform.
+The minimum sustained concurrent channel count shall be established through benchmark-
+ing on the deployment hardware.  Validation shall document processor utilization, memory
+consumption, storage throughput, end-to-end latency, and the maximum sustainable channel
+count without sample loss or measurement degradation.
+–  Measurement Integrity, Calibration, and Traceability:  The monitoring architecture shall pre-
+serve the metrological integrity of all reported measurands.  The receive chain, including an-
+tenna, RF front-end, SDR, timing reference, and processing stages, shall support calibration,
+periodic verification, documented uncertainty, and reproducible performance across deployed
+nodes.   All  reported  measurands,  compliance  decisions,  alerts,  and  archived  evidence  shall
+be  traceable  to  the  acquisition  record,  receiver  configuration,  timing  reference,  calibration
+state, processing configuration, uncertainty characterization, and applicable regulatory rule.
+Any change affecting the measurement chain shall require revalidation of the corresponding
+calibration and reporting functions.
+To support this requirement,  the system shall implement a  hierarchical  calibration  strategy  with
+three tiers, aligned with the regulatory significance of the measurement.
+2
+
+–  Tier 1:  Primary (Laboratory) Calibration.  Each monitoring node shall undergo initial end-to-
+end calibration in a controlled laboratory environment, traceable to national or international
+standards.   This  calibration  shall  establish  the  absolute  accuracy  of  the  measurement  ref-
+erence  plane,  typically  the  antenna  port,  and  shall  characterize  frequency  response,  power
+accuracy, linearity, and relevant environmental sensitivities.  A unique calibration certificate
+and electronic calibration record shall be maintained for each node.
+–  Tier 2:  Secondary (Field) Verification. Each node shall undergo periodic in situ verification to
+confirm that performance remains within acceptable limits relative to the primary calibration
+state.  This procedure may use an internal reference source or a stable external signal.  It need
+not  re-establish  absolute  traceability,  but  shall  provide  a  reliable  check  against  predefined
+warning and alarm limits.  Failure shall trigger a maintenance alert and suspend compliance
+use until resolved.
+–  Tier  3:   Relative  (Channel)  Calibration.   For  measurements  that  do  not  require  absolute
+power accuracy, a relative calibration across the observation bandwidth shall be maintained
+to  control  gain  and  phase  distortion  in  spectral  measurements.   This  calibration  may  be
+implemented through equalization filters, pilot-based methods, or passband characterization
+established during primary calibration.
+2. Functional Decomposition of the Monitoring System
+The architecture resulting from these design considerations is summarized in Figure 1, which iden-
+tifies the principal hardware and software components and their interconnections.
+– RF Front-End (Hardware Layer):  The monitoring node employs a SDR receiver as the antenna-
+coupled  RF  front  end  for  operation  in  the  VHF-II  broadcast  band  (87.5–108  MHz).   This
+stage captures incident RF energy, tunes the band of interest, and produces digitized complex
+baseband samples for downstream processing.  A VHF-II antenna interfaces to the SDR input,
+and an LNA may be added when required to compensate for feedline loss or weak received
+signals.  The suitability of this front end is governed by instantaneous bandwidth, dynamic
+range, frequency-reference accuracy and stability, noise figure, and gain configuration, since
+these parameters bound the fidelity of derived compliance measurands.
+– Signal Acquisition and Digitization:  The SDR streams raw complex baseband (I/Q) samples to
+the embedded host processor through a high-speed USB interface.  These samples represent
+the instantaneous tuned observation bandwidth and permit simultaneous inspection of multi-
+ple contiguous FM broadcast channels within a single acquisition window, reducing the need
+for sequential retuning.  The selected sample rate shall be validated on the target platform to
+ensure sustained operation without dropped samples, taking into account USB throughput,
+host buffering, and processing load.
+– Software Processing Engine:  The  software  processing  engine  implements  the  end-to-end  DSP
+pipeline  for  FM  broadcast  compliance  monitoring.   Its  functions  may  include  spectrum  es-
+timation, channelization, carrier detection, demodulation, occupancy assessment, feature ex-
+traction,  alarm generation,  and compliance-metric evaluation.  The primary output of this
+layer is not user-traffic recovery, but reported measurands, decision outcomes, and supporting
+evidence suitable for regulatory review.
+3
+
+RF Front-End
+HackRF
+87.5-108 MHz
+Up to 20 MS/s
+Processing Unit
+Dragonboard/RPi/PC
+GNU Radio / Python
+Spectrum Sensing
+Remote Moni-
+toring Interface
+Web Dashboard
+Database
+Real-time Viz
+USB
+Internet
+Antenna
+Internet
+Database
+SDR Spectrum Sensing System
+For FM Broadcasting Monitoring
+HardwareSoftwarePlatform
+Figure 1:  Core Architectural Components
+– Data Management and Reporting Layer:  Processed outputs shall be stored in a structured back-
+end using time-stamped records and associated metadata, including frequency, site, station
+identifier,  measurement  type,  and  compliance  status.   This  layer  supports  historical  trend
+analysis,  event  review,  audit-ready  report  generation,  controlled  remote  access  through  an
+API and monitoring dashboard, and automated notifications when predefined thresholds are
+exceeded in accordance with the operational monitoring policy.
+4
+
+3. FM Compliance Measurands and Traceability Requirements
+For SDR-based FM broadcast monitoring, a measurand  is a defined physical or derived quantity
+reported by the monitoring system for regulatory assessment.  The architecture shall distinguish
+between primary compliance measurands, which directly support conformance evaluation, and sec-
+ondary  observables,  which  provide  diagnostic  or  evidentiary  support  but  do  not  by  themselves
+establish compliance.
+– Primary Compliance Measurands:  Primary  compliance  measurands  are  those  used  directly  to
+assess technical conformity under the applicable regulatory framework.  They may include:
+  carrier frequency or frequency offset relative to the assigned channel (carrier frequency
+error: ±(0.5 + 2× f × 10e
+−5
+) kHz);
+  calibrated  received  power  or  spectral  power  at  a  defined  reference  plane  within  the
+observation bandwidth (±2.5 dB);
+  field strength, when supported by antenna-factor characterization and end-to-end cali-
+bration of the receive chain (±3.5 dB);
+  occupied bandwidth and related spectral-containment indicators;
+  adjacent-channel leakage or out-of-band emission level;
+  modulation-related quantities, including peak deviation and, where required, multiplex
+power;
+  channel occupancy over time, including persistence metrics derived from a documented
+detection rule.
+– Secondary Observables:  Secondary  observables  support  interpretation,  diagnosis,  and  audit  re-
+view.  They shall not be treated as standalone compliance determinations unless explicitly
+required by the governing measurement procedure.  They may include:
+  demodulated audio excerpts;
+  baseband or multiplex spectrum snapshots;
+  spectrograms and time-frequency visualizations;
+  anomaly scores or classifier outputs produced by statistical or machine-learning methods.
+– Measurement Conditions, Metadata, and Traceability:  Each reported measurand shall be stored
+together  with  its  measurement  conditions  and  associated  metadata,  including  observation
+bandwidth, center frequency, sample rate, receiver gain state, antenna configuration, reference
+plane, calibration state, calibration record identifier, site identifier, timestamp reference, and
+processing-software version. For derived quantities, the processing method, averaging interval,
+uncertainty characterization, decision rule, and applicable regulatory threshold shall also be
+recorded to support verification, reproducibility, inter-node comparison, and technical review.
+Table 1 defines the principal compliance measurands used by the SDR-based FM monitoring
+system.  For each quantity, it specifies the operational definition, units, estimation method, cali-
+bration dependence, reporting cadence, and applicable compliance reference.
+∗
+Carrier-frequency error shall be reported as a compliance measurand only when the node frequency
+reference  has  been  validated  by  a  traceable  calibration  procedure  or  by  an  external  disciplined
+reference.
+5
+
+Measurand
+Symbol Definition
+Units
+Estimation method
+Calibration   depen-
+dency
+Reportinginterval
+Compliance reference
+Carrier
+fre-
+quency error
+∆
+f
+c
+Difference   between   the   es-timated   channel   center   fre-quency  and  the  assigned  fre-quency of the monitored FMstation.
+Hz
+Spectral  peak,  centroid,  or
+model-based estimation ref-erenced   to   the   node   fre-quency standard.
+High;
+depends
+on
+frequency-referenceaccuracy,
+offset    cal-
+ibration,
+and
+drift
+compensation (
+∗
+).
+Periodicand
+event-
+triggered
+Assigned-frequency
+tol-
+erance    specified    by    theapplicable
+regulator
+or
+station license.
+Calibrated  re-ceived power
+P
+rx
+(
+B
+)   Power measured at a defined
+receiver  reference  plane  overa   stated   bandwidth
+ B
+   af-
+ter  gain-state  and  frequency-response correction.
+dBm   ordB
+μ
+V
+PSD estimation followed byintegration over the definedanalysis bandwidth after re-ceiver calibration.
+High; requires gain cal-ibration,  front-end  re-sponse  correction,  anda documented referenceplane.
+Periodic
+Site-
+or
+policy-specific
+threshold; suitable for com-pliance  use  only  when  thereference plane is defined.
+Field strength
+  E
+
+Electric  field  strength  at  the
+monitoring  antenna  location,inferred  from  the  calibratedreceive chain and antenna fac-tor.
+dB
+μ
+V/m   Conversion from calibrated
+received level using antennafactor, cable loss, and front-end corrections.
+Very  high;   valid  onlywhen   antenna   factorand   end-to-end   chaincalibration   are   avail-able.
+Periodic
+Applicable
+field-strength
+rule, coordination criterion,or    service-limit    criterionadopted by the jurisdiction.
+Occupiedbandwidth
+B
+occ
+Width of the frequency bandcontaining   a   specified   per-centage of the total integratedmean emission power.
+kHz
+Direct
+   β
+%
+occupied-
+bandwidth
+measurement
+on the recorded spectrum.
+Moderate;
+depends
+on   frequency-responseflatness,
+RBW/FFT
+configuration,
+and
+interference
+control
+within
+the
+analysis
+span.
+Periodic
+Occupied-bandwidth
+or
+spectral-containment
+rule
+defined   by   the   governingstandard  or  license  condi-tion.
+Adjacent-channel
+/
+out-of-bandemission level
+L
+adj
+,
+L
+OOB
+Emission   level   measured   inadjacent-channel   or   out-of-band regions, reported eitherrelative  to  the  in-band  refer-ence level or at the calibratedreceiver reference plane.
+dBc    ordBm
+Spectral
+integration
+or
+peak-envelope
+evaluation
+in  predefined  offset  bandsrelative   to   the   assignedcarrier.
+High;
+requires
+dynamic-range
+val-
+idation,
+front-end
+linearity,  and  spectralcalibration.
+Periodicand
+event-
+triggered
+Emission-mask  or  attenua-tion  rule  adopted  by  theregulator, evaluated for thestated offset region and ref-erence level.
+Peak deviation/
+multiplex-
+related  indica-tor
+∆
+f
+max
+,
+P
+MPX
+Maximum  instantaneous  fre-quency  deviation  and,  whererequired,  a  multiplex-relatedmodulation  quantity  derivedfrom the FM baseband or de-modulated composite signal.
+kHz,dBr,   orotheradoptedMPXmetric
+FM  demodulation  followedby
+deviation
+estimation
+and  multiplex-power  mea-surement using the adoptedmethod.
+High;
+depends
+on
+demodulator   linearity,deviation
+calibra-
+tion,    and   composite-baseband conditioning.
+Windowedestimatewith
+peri-
+odic
+sum-
+mary
+Applicable
+deviation
+or
+multiplex-power rule underthe
+adopted
+monitoring
+procedure.
+Channel
+oc-
+cupancy    overtime
+O
+T
+Fraction of the observation in-terval during which the chan-nel  is  declared  occupied  ac-cording  to  a  documented  de-tection rule.
+%
+Threshold-,
+energy-,
+or
+feature-based
+detection
+over   repeated   observationwindows   with   a   definedrevisit strategy.
+Moderate;  depends  onthreshold
+calibration,
+noise-floor   estimation,and decision logic.
+Rolling sum-mary
+Occupancy   definition   anddecision rule established bythe monitoring policy.
+Table 1:  Operational definition of principal FM compliance measurands.  Here,
+ β
+% occupied bandwidth denotes the minimum frequency
+interval containing
+ β
+% of the total integrated mean emission power.
+6
+
+Classification Framework:
+The SDR monitoring system shall classify each measurand based on hardware-constrained measure-
+ment quality.  This classification dictates permissible regulatory use and defines required validation,
+calibration, and uncertainty characterization.
+Three capability classes are defined:
+– Compliance-Grade.  The measurand may be used directly to support formal regulatory compli-
+ance determinations, provided that all calibration, validation, and uncertainty requirements
+specified in this document are satisfied.  The hardware platform, processing implementation,
+and  end-to-end  measurement  chain  have  been  validated  to  meet  the  applicable  regulatory
+tolerance and uncertainty limits.
+– Screening-Grade.  The measurand may be used for anomaly detection, event screening, situational
+awareness, or preliminary assessment, but it shall not be used as the sole basis for a formal
+non-compliance determination without corroboration from a compliance-grade measurement
+or independent validation. Screening-grade measurements may trigger alerts, operator review,
+or deployment of higher-capability instrumentation, but they do not by themselves constitute
+regulatory evidence.
+– Unsupported.  The measurand cannot be reliably estimated with the deployed hardware configura-
+tion and shall not be reported for either compliance or screening use.  Attempting to measure
+an unsupported quantity may produce outputs that are numerically valid but metrologically
+meaningless or systematically biased beyond correction.
+– Conditional Compliance-Grade.  The measurand may reach compliance-grade status on this hard-
+ware platform,  but only after all enumerated preconditions in the Enhancement column of
+Table 3 have been implemented, independently validated, and recorded in a calibration cer-
+tificate.  Prior to that validation, the measurand shall be treated as Screening-Grade for all
+regulatory purposes.  The preconditions are mandatory, not recommended.
+2
+Metadata Requirements for Capability-Dependent Reporting
+Every reported measurand shall include in its metadata record:
+  The capability class under which it was acquired (compliance-grade, screening-grade, unsup-
+ported),
+  Hardware platform identifier and configuration (ADC resolution, gain state, reference source),
+  Applicable calibration tier(s) and calibration record identifier,
+  Measurement uncertainty or, for screening-grade results, an explicit uncertainty disclaimer,
+  Any hardware augmentation applied (external GPSDO, LNA, filter),
+  Software version and processing-method identifier.
+Screening-grade measurands shall be flagged in all reports and databases as FOR
+SCREENINGONLY
+and shall not appear in formal compliance summaries without explicit override justification and
+independent validation.
+2
+While the above standard classes exist for professional equipment, this ad hoc class is suitable for low-cost SDR
+boards with several limitations.
+7
+
+Uncertainty Budget and Reporting
+All measurements intended for regulatory compliance use shall be accompanied by a documented
+uncertainty  evaluation  in  accordance  with  the  Guide  to  the  Expression  of  Uncertainty  in  Mea-
+surement (GUM) [?].  The uncertainty budget shall account for all known sources of random and
+systematic error, shall be traceable to the calibration hierarchy defined above, and shall be reported
+alongside the measurand value in all compliance records and evidence archives.
+Uncertainty Classification, the associated Uncertainty-Aware Compliance Decisions, and Peri-
+odic Re-Evaluation Requirements are detailed in Appendix
+4. Node-Level DSP Pipeline for FM Compliance Monitoring
+The compliance monitoring pipeline transforms raw complex baseband observations into reported
+measurands, decision outcomes, and supporting evidence.  However, the technical rigor of such a
+pipeline implementation is often challenged by the hardware-software interface.
+The principal processing stages are shown in Fig. 2 and described below.
+Wideband
+Acquisition
+Conditioning
+Channeli-
+zation &
+Tracking
+Per-Channel
+Demodulation
+Identification
+Compliance
+Measurand
+Estimation
+Rule
+Evaluation
+& Alerting
+Reporting
+& Evidence
+Archiving
+Input:
+Raw I/Q
+Samples
+Output:
+Compliance Reports
+& Evidence Logs
+Figure 2:  Implemented SDR-based FM broadcast compliance monitoring pipeline.  Raw I/Q sam-
+ples are processed through six stages, from wideband acquisition and conditioning to reporting and
+evidence archiving, to enable automated regulatory assessment.
+– Wideband Acquisition & Conditioning:  Raw I/Q samples are acquired from the SDR front end
+together with receiver-configuration and timing metadata.  This stage establishes the wide-
+band observation used by all downstream analyses.
+Its principal functions are:
+  Hardware  configuration:   initialization  of  SDR  operating  parameters,  including  center
+frequency, sample rate, gain state, and front-end amplification settings;
+  Sample  streaming:  transfer of raw complex baseband samples from the SDR device to
+the embedded host processor through the USB interface;
+  Buffer  management:  temporary storage and flow control to reduce the risk of sample
+loss during sustained acquisition;
+  Metadata association:  tagging of captured data with timing, configuration, and calibration-
+state information;
+  Signal  conditioning:   preliminary  preparation  of  the  wideband  observation,  including
+DC-offset mitigation, optional digital frequency translation, and other conditioning steps
+required before channelization and spectral analysis.
+– Channelization, Isolation & Tracking:  The conditioned wideband observation is analyzed to de-
+tect active FM broadcast channels within the monitored span.  Detected channels are isolated
+and tracked over time to support stable downstream measurement.
+Its principal functions are:
+8
+
+  Wideband  spectral  survey:  estimation  of  spectral  content  over  the  monitored  band  to
+identify candidate FM emissions and their approximate center frequencies and occupied
+regions;
+  Channel detection:  application of detection criteria to distinguish active broadcast chan-
+nels from noise, interference, or spurious responses;
+  Channel isolation:  extraction of individual FM channels through digital channelization,
+filtering, and frequency selection;
+  Frequency  tracking:   monitoring  of  the  spectral  position  of  each  detected  channel  to
+compensate for drift, tuning offsets, or minor carrier variations;
+  Persistence assessment:  evaluation of channel continuity and temporal presence to sup-
+port occupancy estimation, event detection, and stable downstream demodulation.
+– Optional Per-Channel Demodulation & Identification:  Each isolated FM channel is demodulated
+to recover the signal products required for modulation analysis.  Auxiliary identification func-
+tions may be used to support station recognition, event attribution, or diagnostic interpreta-
+tion, but they do not constitute primary compliance criteria.
+Its principal functions are:
+  FM  demodulation:  conversion of each isolated RF channel into its corresponding base-
+band representation for subsequent compliance analysis;
+  Composite baseband recovery:  extraction of the FM multiplex signal components relevant
+to  deviation  analysis,  pilot  detection,  stereo-related  features,  and  other  modulation-
+dependent measurements;
+  Baseband conditioning:  preparation of the recovered signal through filtering, normaliza-
+tion, and related operations required by the adopted estimation methods;
+  Auxiliary station identification:  use of identifying signal characteristics, such as spectral
+signatures,  pilot structure,  metadata cues,  or program-dependent features,  to support
+station recognition and event attribution;
+  Secondary feature classification:  optional classification of non-primary signal attributes
+for diagnostic interpretation, anomaly screening, or evidentiary support.
+– Compliance Measurand Estimation:  For each monitored channel, the system computes the oper-
+ationally defined measurands required for regulatory assessment.  Its main functions are:
+  Carrier-frequency estimation:  determination of channel center frequency and its devia-
+tion relative to the assigned broadcast frequency, referenced to the adopted frequency
+standard and calibration state;
+  Power-related estimation:  computation of calibrated received power, spectral power, or
+other amplitude-related quantities at the defined reference plane, subject to the appli-
+cable gain and frequency-response corrections;
+  Bandwidth and spectral-containment estimation:  evaluation of occupied bandwidth and
+related spectral-containment indicators from the recorded spectrum using the adopted
+analysis bandwidth and decision rule;
+  Adjacent- and out-of-band emission analysis:  measurement of spectral leakage or emis-
+sion level in adjacent-channel and out-of-band regions relative to the in-band reference
+level or other stated compliance reference;
+9
+
+  Modulation-related estimation:  extraction of deviation-based and multiplex-related quan-
+tities from the demodulated baseband or composite signal;
+  Occupancy  estimation:  determination of channel occupancy over time using the docu-
+mented detection rule, observation window, and revisit strategy;
+  Result association:  association of each reported measurand with the relevant processing
+configuration, averaging interval, calibration state, and metadata.
+– Decision Logic & Alerting:  The estimated measurands are compared against applicable regula-
+tory limits, license conditions, or monitoring rules. When threshold exceedances or anomalous
+conditions are detected, the system generates alerts and records the supporting decision con-
+text.
+Its principal functions are:
+  Compliance-rule matching:  comparison of each estimated measurand against the appli-
+cable thresholds, license requirements, or monitoring criteria;
+  Decision logic execution:  application of the adopted decision rules to classify the observed
+channel state as compliant, non-compliant, uncertain, or requiring further review;
+  Threshold exceedance detection:  identification of events in which one or more measurands
+depart from their permitted range;
+  Anomaly handling:  processing of abnormal system or signal conditions that merit oper-
+ator attention even when a formal violation is not established;
+  Alert generation:  creation of notifications, warning flags, or event markers for operator
+review;
+  Decision-context  recording:  storage of supporting measurands, timestamps, processing
+parameters, rule set, and relevant metadata required to justify the alert or compliance
+decision.
+The rule evaluation stage shall compare each estimated measurand x against the applicable
+regulatory threshold T  using an explicitly defined decision rule that accounts for measure-
+ment uncertainty U .  The decision logic depends on the regulatory framework, risk tolerance,
+and  adopted  compliance  philosophy.   Three  supported  decision  frameworks  are  detailed  in
+Appendix.
+– Reporting & Evidence Archiving:  The final stage stores reported results, selected signal products,
+and decision records in a structured backend for later retrieval, review, and audit.
+Its principal functions are:
+  Measurement persistence:  storage of reported measurands, decision outcomes, and asso-
+ciated metadata in a structured backend;
+  Evidence preservation:  retention of selected supporting artifacts, such as PSD estimates,
+spectrograms, demodulated excerpts, and event-linked channel records;
+  Compliance  reporting:  generation  of  summaries,  station-level  assessment  records,  and
+historical trend outputs suitable for operational monitoring and formal review;
+  Alert-log  management:   archival  of  alert  histories,  event  markers,  severity  levels,  and
+operator-facing notifications;
+10
+
+  Controlled  access  and  retrieval:   provision  of  structured  mechanisms  for  querying,  vi-
+sualizing,  and  exporting  stored  results  in  accordance  with  the  monitoring  policy  and
+access-control model.
+The estimation background of the processing pipeline is specified for each Compliance Measur-
+and in Appendix ??.
+5. Array-Level Coordination for Distributed Regulatory Monitoring
+In a distributed regulatory monitoring deployment, the sensor array shall be treated as a coordi-
+nated measurement system rather than as a collection of independent SDR nodes.  Each node may
+acquire, preprocess, and estimate local measurands independently, but any array-level conclusion
+shall be formed only after the participating nodes have been brought into a common calibration,
+timing,  reference,  and health framework.  This layer is necessary to ensure that multi-node con-
+clusions remain technically comparable, metrologically defensible, and auditable under regulatory
+review.
+– Inter-node calibration.  Each  node  shall  retain  its  own  primary,  field,  and  relative  calibration
+records, but the array shall additionally maintain an inter-node calibration model that quan-
+tifies  residual  differences  between  nodes  for  the  measurands  intended  for  joint  use.   This
+model shall include, at minimum, frequency-reference offset, gain bias, passband-shape devi-
+ation, timestamp offset, and any site-dependent correction needed to compare measurements
+across locations.  Inter-node calibration shall be verified periodically using a shared reference
+signal, a transportable reference source, or a controlled over-the-air reference transmission.
+Array-level fusion shall use only nodes whose residual mismatch remains within predefined
+acceptance limits for the relevant measurand.
+– Timing alignment.  All nodes contributing to common event detection, occupancy estimation, or
+corroborated compliance decisions shall operate against a common time base traceable to UTC
+or another approved reference.  Timestamp uncertainty, holdover behavior, synchronization-
+loss state, and timing-validation results shall be recorded in metadata.  For array processing,
+observations shall be aligned to a documented common epoch and window definition, with
+explicit tolerance on allowable inter-node skew.  If the required timing tolerance is exceeded,
+the affected node may continue local monitoring, but it shall be excluded from time-critical
+multi-node conclusions until synchronization is restored.
+– Common reference distribution.  The  array  shall  distribute  or  derive  a  common  frequency  and
+time reference appropriate to the target measurement class. For carrier-frequency compliance,
+the use of a disciplined external reference shall be preferred where the node-local oscillator
+is otherwise insufficiently stable for the required tolerance.  The reference architecture shall
+specify the reference source, distribution method, holdover strategy, fault detection, and the
+procedure  followed  when  a  node  loses  reference  lock.   Any  measurement  obtained  during
+reference loss shall be flagged according to its impact on metrological validity and may be
+downgraded to screening-only use where required.
+– Sensor health coordination.  The array management layer shall continuously supervise node health
+using both hardware and measurement-quality indicators.  These shall include SDR connec-
+tivity,  sample-loss  status,  gain  state,  clipping,  DC  contamination,  I/Q  residuals,  thermal
+11
+
+alarms, storage availability, network reachability, calibration validity, synchronization state,
+and reference-lock state.  Health supervision shall classify each node as at least one of the
+following:  operational  for  compliance  use,  operational  for  screening  only,  degraded,  or  un-
+available.  Array-level conclusions shall only use nodes whose health state is compatible with
+the uncertainty and decision rule of the associated measurand.
+– Cross-node consistency checks.  When multiple nodes observe the same licensed emission or event,
+the system shall perform cross-node consistency analysis before issuing a fused regulatory con-
+clusion.  The consistency checks shall compare overlapping measurands after correcting for
+known site, antenna, and propagation differences.  At minimum, the framework should eval-
+uate consistency of carrier-frequency estimate,  event time,  occupancy declaration,  and any
+jointly used spectral or modulation indicator.  Persistent disagreement beyond the expected
+uncertainty budget shall trigger one of three outcomes:  exclusion of the outlying node, clas-
+sification of the event as uncertain, or escalation for operator review.  Cross-node agreement
+shall strengthen confidence, but disagreement shall never be silently averaged away.
+– Contribution of multiple nodes to one regulatory conclusion.  The  framework  shall  define  a  for-
+mal  fusion  rule  for  converting  node-level  results  into  an  array-level  conclusion.   That  rule
+shall specify:
+1.  eligibility criteria for participating nodes;
+2.  the measurands that may be fused and those that shall remain node-local;
+3.  weighting factors based on calibration state, uncertainty, health, and geometry;
+4.  the required corroboration level for declaring a non-compliance event; and
+5.  how inconclusive or conflicting evidence is handled.
+For  example,  the  array  may  adopt  a  rule  in  which  a  regulatory  alert  is  issued  only  when
+at least two eligible nodes independently report the same exceedance within a defined time
+window and with compatible uncertainty bounds, while a single-node exceedance is retained
+as a provisional alert pending corroboration or review.  The exact fusion rule shall depend on
+the measurand:  carrier-frequency anomalies may be corroborated by agreement in calibrated
+frequency error, whereas occupancy or interference events may rely on synchronized temporal
+coincidence across nodes.
+– Array-level traceability and evidence.  Every fused decision shall preserve the full chain of evidence
+linking the array conclusion to the underlying node records.  The archived record shall identify
+the participating nodes, their calibration states, synchronization states, health states, local
+uncertainties, fusion weights, consistency-check outcomes, and the decision-rule version used
+to form the final conclusion.  This ensures that the array result remains auditable and can be
+reconstructed during technical or legal review.
+– Degraded-mode operation.  The framework shall explicitly distinguish between full array operation
+and degraded array operation.  Loss of one node, loss of common reference, excessive timing
+skew,  or calibration expiry shall not necessarily halt all monitoring,  but it shall automati-
+cally restrict which measurement classes remain valid.  In degraded mode, the system may
+continue screening, situational awareness, or evidence collection, while suspending array-level
+compliance determinations that depend on the missing capability.
+12
+
+Baseline HackRF One Platform Assessment
+Measurement Capability, Platform Limitations, and Suitability
+The HackRF One was selected for large-scale deployment on the basis of cost and reconfigurability.
+Its use as a primary sensor node entails a trade-off between cost-efficiency and metrological rigour
+that must be explicitly characterised before any compliance determination is made.
+Regulatory  standards  (e.g.,  FCC  Part  73,  ANE  Resolucin  105)  often  mandate  out-of-band
+emission attenuation exceeding 80 dB, whereas the HackRF One’s 8-bit ADC offers a theoretical
+dynamic range of only≈ 48 dB (6.02× 8 + 1.76 dB). In regulatory monitoring, the Effective Number
+of Bits (ENOB) is more critical than nominal bit depth:  thermal noise, non-linearity, and input-
+power-dependent  compression  typically  reduce  practical  resolution  to ≈ 7  bits  (≈ 42  dB),  with
+further degradation at the band edges of the 20 MHz observation window.  This limitation renders
+ACLR  measurements  and  any  measurand  dependent  on  high  dynamic  range  unreliable  without
+external filtering and strict gain-staging.
+To maintain metrological integrity, strict gain-staging protocols are required.  Peak signal levels
+shall be maintained at least 6 dB below full scale to prevent clipping.  In distributed deployments
+where the signal environment varies across nodes, this requires either manual gain profiling at each
+site or verified AGC with mandatory state logging.  If AGC is employed, its state shall be recorded
+and timestamped for every sample block; measurements acquired without this metadata shall not
+be used for calibrated received power reporting and shall be flagged as invalid in the acquisition
+record.
+The  hardware’s  wideband  nature  introduces  three  DSP-level  pathologies  that  affect  different
+parts of the compliance measurand set:
+  DC spectral artifact.  The LO leakage produces a narrowband spike at DC in the baseband
+spectrum. Offset tuning (setting f
+LO
+= f
+target
++f
+off
+, f
+off
+= f
+s
+/4) displaces the spike away from
+the measurement band and is the required mitigation.  This increases acquisition complexity:
+precise mapping between the LO frequency, applied offset, and true RF frequency must be
+maintained and recorded in metadata.
+  I/Q imbalance.  Amplitude imbalance g and phase error φ between the I and Q channels
+produce a mirror image of the desired signal at −f
+offset
+in the baseband spectrum.  The cor-
+rection applied in the preprocessing stage (a 2×2 widely-linear matrix with scalar g and φ)
+is  frequency-independent.   Across  the  20  MHz  observation  bandwidth,  the  HackRF  One’s
+imbalance parameters are frequency-dependent; the scalar correction leaves a residual imbal-
+ance at frequencies remote from the calibration tone.  Nodes operating with channel targets
+more than approximately 5 MHz from the calibration tone frequency shall re-estimate g and
+φ at a tone within 500 kHz of the target channel, or shall bound the residual mirror power
+by  measurement  and  record  it  as  an  uncertainty  contributor.   The  corrected  mirror  power
+shall remain below −40 dBc after correction;  results exceeding this threshold shall trigger
+the IQ
+RESIDUAL flag and shall not be used for occupied-bandwidth compliance estimation.
+  Frequency-dependent noise floor.  The receive chain exhibits a non-flat noise and gain
+profile across the observation bandwidth.  A relative (Tier 3) calibration is required to char-
+acterise and correct this variation.  The detection margin ∆
+det
+used in Stage 4 channel detec-
+tion is not a fixed absolute value; it shall be set as a site-calibrated offset above the locally
+verified noise floor,  derived from the Tier 2 noise-floor verification required by the channel
+13
+
+occupancy preconditions in Table 3.  A default value of 8 dB may be used only during ini-
+tial  commissioning  prior  to  site  verification;  it shall  not  be  used  for  compliance-grade  or
+conditional-compliance-grade occupancy reporting.
+Local-oscillator phase noise and the nominal ± 20 ppm crystal reference accuracy constrain fre-
+quency stability. For carrier-frequency compliance, an external GPS-Disciplined Oscillator (GPSDO)
+providing a traceable 10 MHz reference is the required mitigation; validated post-hoc calibration
+alone is  insufficient  because  it cannot  correct for  in-situ thermal drift  between calibration  inter-
+vals.  Any measurement of carrier frequency error acquired without a locked GPSDO or equivalent
+disciplined reference shall be classified as screening-grade and flagged UNCALIBRATED
+REFERENCE
+regardless of any other configuration.
+Additionally,  the  Stage  4  harmonic-rejection  test  is  currently  implemented  as  a  placeholder
+and  performs  no  rejection.   Until  this  function  is  implemented  and  validated,  nodes shall  not
+be declared suitable for compliance-grade or conditional-compliance-grade use in deployment envi-
+ronments where intermodulation products from co-channel or adjacent FM stations may produce
+spurious candidates within the monitored span.  Operators shall assess intermodulation risk at each
+site prior to compliance-use declaration by examining the wideband PSD for candidate energy at
+harmonic offsets from strong in-band carriers.
+If any measurand class exceeds the validated hardware capability as defined in Table 3, the node
+shall be declared unsuitable for that measurand and the corresponding output shall be suppressed
+or flagged UNSUPPORTED in all reports.
+Upgrade Paths and Hybrid Architectures
+Deployments  that  require  compliance-grade  measurement  of  measurands  currently  classified  as
+Screening-Grade or Unsupported in Table 3 shall implement one of the following strategies.  The
+strategies differ in scope: Strategy 1 achieves compliance-grade coverage across all primary measur-
+ands; Strategy 2 achieves compliance-grade determination through array-level corroboration while
+retaining  HackRF  One  screening  nodes;  Strategy  3  elevates  a  defined  subset  of  measurands  to
+compliance-grade or Conditional Compliance-Grade on the HackRF One platform through hard-
+ware augmentation and validation.  In all cases, measurands classified as Conditional Compliance-
+Grade  remain  subject  to  the  preconditions  specified  in  Table  3,  regardless  of  which  strategy  is
+adopted.
+1.  Hardware  Upgrade.    Replace  the  HackRF  One  with  a  higher-performance  SDR  plat-
+form offering 12–16 bit ADC resolution, lower phase noise, improved SFDR, and a factory-
+calibrated  or  externally  disciplined  frequency  reference.   Candidate  platforms  include  the
+Ettus Research USRP B200/B210 and the Airspy R2 or Airspy Mini (24–1800 MHz); equiv-
+alent instrumentation-grade receivers operating across the VHF-II band (87.5–108 MHz) are
+also acceptable.  Full Tier 1 calibration of the replacement platform is mandatory prior to
+compliance-use declaration.  Measurands classified as Conditional Compliance-Grade in Ta-
+ble 3 remain subject to their precondition lists even after a hardware upgrade.
+2.  Hybrid Screening and Validation Architecture.  Deploy HackRF One nodes for wide-
+area  screening  and  event  detection  (Screening-Grade),  supported  by  a  smaller  number  of
+compliance-grade validation nodes equipped with higher-capability instrumentation at strate-
+gic locations.  When a screening node triggers an alert,  the event shall be corroborated by
+a compliance-grade node before any formal regulatory determination is issued.  Corrobora-
+tion shall follow the array-level fusion rules defined in Section 5, including eligibility criteria,
+14
+
+Table 2:  Theoretical vs. practical hardware performance of the HackRF One for regulatory FM
+monitoring.  Affected measurands are identified to make the table actionable.
+ParameterTheoreticalPractical
+(HackRF One)
+Impact on compliance
+(affected measurands)
+Dynamicrange
+(ENOB-limited)
+48.2 dB (8-bit)35–45 dB (≈7 bit ef-
+fective)
+Insufficient for high-attenuation
+mask checks.  Primary impact:
+ACLR, field strength.
+SFDR
+a
+≈48 dBFS
+a
+50–55 dBc
+a
+Limited ability to distinguish weak
+spurs near strong carriers.
+Primary impact:  ACLR, occupied
+bandwidth near band edges.
+I/Qimbalance
+(scalar    correction
+residual)
+0  dB  mirror  re-
+jection (ideal)
+<−40   dBc   within
+±5 MHz of cal. tone;
+degrades    at    band
+edges
+Mirror images bias spectral
+estimates and generate false
+candidates.  Primary impact:
+carrier frequency estimation,
+occupied bandwidth.
+Frequency-dependent;
+re-calibration required per site
+channel (see Section ).
+LO phase noise<−100   dBc/Hz
+at  10  kHz  offset
+(ideal)
+−80 to −85 dBc/Hz
+at   10   kHz   offset
+(stock XO)
+Broadens spectral estimates and
+raises close-in noise floor.  Primary
+impact:  carrier frequency error,
+occupied bandwidth edge
+interpolation.  Mitigated by
+GPSDO with low-phase-noise
+10 MHz reference.
+Samplingrate
+(sustained)
+Up to 20 MspsReliableat10–
+16 Msps
+Limits instantaneous observation
+bandwidth for multi-channel
+survey.  Primary impact:  wideband
+acquisition coverage, multi-channel
+occupancy.
+Frequencyrefer-
+ence accuracy
+N/A(XO-
+dependent)
+±20ppm(stock
+XO)
+±2 kHz absolute error at 100 MHz;
+exceeds carrier-frequency
+compliance tolerance without
+GPSDO. Primary impact:  carrier
+frequency error.
+a
+Theoretical  SFDR  is  expressed  in  dBFS  (relative  to  full  scale);  practical  SFDR  is  expressed  in  dBc
+(relative to a carrier tone). These are not directly comparable: a strong in-band carrier raises the apparent
+SFDR in dBc while the absolute spurious floor in dBm remains constrained by the 8-bit dynamic range.
+The dBFS figure governs compliance headroom calculations.
+Sources:  Dynamic range and SFDR values based on the MAX2837 datasheet and empirical HackRF One
+characterisation.  Phase noise figures are indicative; site measurement is recommended for compliance-
+critical deployments.
+inter-node calibration verification, timing alignment, and consistency checks.  A single-node
+screening alert that cannot be corroborated within the defined time window and uncertainty
+bounds shall be retained as a provisional alert and escalated to operator review; it shall not
+constitute a standalone compliance determination.
+15
+
+3.  External Reference and Filtering Augmentation.  Retain the HackRF One platform
+and augment each node with the following,  all of which are mandatory for compliance-use
+declaration of the affected measurands:
+  External  GPSDO  providing  a  traceable  10  MHz  reference  and  1  PPS  timing  signal
+(required for carrier frequency error);
+  External preselector or tunable bandpass filter to improve dynamic range for adjacent-
+channel measurements;
+  Documented LNA with characterised gain and noise figure, inserted and calibrated as
+part of the Tier 1 receive-chain calibration;
+  Automated AGC state logging and gain-step calibration, with per-block metadata record-
+ing as specified in Section ;
+  Implementation  and  validation  of  the  Stage  4  harmonic  rejection  function  prior  to
+compliance-use  declaration  in  any  environment  where  intermodulation  products  from
+co-channel or adjacent FM stations may produce spurious candidates.
+This approach elevates carrier frequency error and channel occupancy toward their respec-
+tive target capability classes (Screening-Grade and Conditional Compliance-Grade), and may
+elevate occupied bandwidth to Conditional Compliance-Grade, subject to completion of all
+preconditions listed in Table 3 and documented uncertainty characterisation under the GUM
+framework.   Field  strength  and  adjacent-channel  emission  remain  Unsupported  under  this
+strategy; compliance-grade assessment of these measurands requires Strategy 1.
+Capability Classification by Primary Measurand
+Table 3 summarises the baseline capability classification for each primary compliance measurand
+when the monitoring node is implemented using the HackRF One SDR receiver.  The classifica-
+tion reflects the limitations imposed by the 8-bit ADC (effective ≈7 bits, ≈42 dB dynamic range),
+±20 ppm uncalibrated frequency reference, front-end linearity, and noise floor characteristics de-
+scribed in Section .
+The classification is a baseline: a node that has completed all mandatory preconditions listed for
+a Conditional Compliance-Grade measurand, and holds a current calibration certificate attesting
+to that completion, is reclassified to Compliance-Grade for that measurand only.  In the absence of
+a valid certificate, the measurand shall revert to Screening-Grade regardless of any other system
+configuration.  The Conditional Compliance-Grade class is defined in Section 3.
+For Unsupported measurands, the listed factors are hardware-imposed disqualifying limitations
+that cannot be resolved by calibration or software alone; the required platform capability is stated
+to guide upgrade decisions.  For Screening-Grade measurands, the listed items are mandatory qual-
+ifications that must be satisfied before the measurand output is used for any monitoring purpose.
+16
+
+Table 3: Measurement Capability Matrix for HackRF One–Based Monitoring Node.  Classifications
+are baseline values; see paragraph above for reclassification conditions.
+MeasurandCapability ClassQualification, Preconditions, or Limiting Factors
+a
+Carrier  Frequency
+Error
+ScreeningExternal   GPSDO   required   as   the   sole   path   to
+compliance-grade;  post-hoc  calibration  alone  is  insuf-
+ficient  to  correct  in-situ  thermal  drift.   Tier  1  calibra-
+tion  of  frequency  reference  mandatory.   Residual  un-
+certainty  shall  be  characterised  and  reported.    Mea-
+surements  acquired  without  a  locked  GPSDO  shall
+be  flagged UNCALIBRATED
+REFERENCE  and  treated  as
+screening-grade regardless of other configuration.
+b
+CalibratedRe-
+ceived Power
+ScreeningAGC state shall be recorded and timestamped for ev-
+ery sample block;  measurements acquired without this
+metadata shall not be used for power reporting.  Tier 1
+and Tier 2 calibration of gain chain mandatory.  Abso-
+lute power accuracy limited by gain quantisation (±2–
+8 dB steps) and front-end uncertainty.  Valid only when
+clipping is absent and gain state is recorded.
+Field StrengthUnsupportedDisqualifying limitations: (i) dynamic range of 35–45 dB
+is insufficient for weak-signal monitoring in the presence
+of strong co-channel or adjacent interference; (ii) no fac-
+tory antenna-factor characterisation is available for the
+HackRF One receive chain.  Reclassification requires a
+platform with ≥12-bit ADC, full end-to-end Tier 1 cal-
+ibration including antenna factor, feedline loss, and en-
+vironmental correction, and a validated site-specific an-
+tenna pattern.
+OccupiedBand-
+width
+Conditional
+Compliance
+Mandatory  preconditions  —  all  must  be  satisfied  and
+attested  by  calibration  certificate:  (1)  FFT  size,  win-
+dow  function,  and  percentile  method  documented  and
+version-controlled.  (2) Frequency-response flatness val-
+idated  by  Tier  3  calibration  across  the  full  analysis
+span, with residual ripple < 0.5 dB. (3) RBW equivalent
+characterised  and  recorded  in  measurement  metadata.
+(4)  Interference  control  within  analysis  span  verified
+against a defined co-channel rejection criterion.  (5) I/Q
+imbalance correction residual verified <−40 dBc at the
+target channel frequency; results exceeding this thresh-
+old shall trigger IQ
+RESIDUAL and invalidate bandwidth
+estimates.
+c
+(6) Cross-validation against reference instru-
+mentation  (minimum  one  traceable  signal  generator
+sweep) completed and archived prior to first compliance-
+use deployment.
+Adjacent-Channel
+/Out-of-Band
+Emission
+UnsupportedDisqualifying limitations:  SFDR of 50–55 dBc is insuf-
+ficient for regulatory emission masks requiring >70 dB
+attenuation;  the  gap  cannot  be  closed  by  calibration.
+Reclassification requires an external preselector or SAW
+filter and a 14–16 bit ADC front-end; both are required,
+not optional.
+Peak   Deviation   /
+Multiplex Power
+ScreeningFM demodulator linearity and deviation calibration re-
+quired.    Multiplex-power  estimation  valid  only  when
+baseband conditioning (de-emphasis, pilot extraction) is
+validated against a reference modulation analyser.  Pilot
+and RDS sub-carrier magnitudes shall be verified inde-
+pendently.
+ChannelOccu-
+pancy Over Time
+Conditional
+Compliance
+Mandatory preconditions — all must be satisfied and at-
+tested by calibration certificate: (1) Detection threshold
+shall  be  a  site-calibrated  offset  above  the  locally  ver-
+ified  noise  floor;  the  Stage  4  default  margin  of  8  dB
+shall  not  be  used  for  compliance  reporting  prior  to
+Tier 2 noise-floor verification.
+d
+(2) Tier 2 noise-floor ver-
+ification  completed  and  recorded  at  each  deployment
+site before compliance-use declaration.  (3) False-alarm
+rate and missed-detection probability characterised un-
+der site noise conditions and recorded in the measure-
+ment procedure.  (4) Temporal resolution, revisit inter-
+val,  and  hysteresis  parameters  fixed  in  the  processing
+configuration  and  version-controlled.   (5)  Stage  4  har-
+monic rejection function implemented and validated be-
+fore compliance-use declaration at any site where inter-
+modulation  products  from  co-channel  or  adjacent  FM
+stations may produce spurious candidates.
+e
+(6) Decision
+rule, including threshold derivation method, recorded in
+metadata for every reported occupancy value.
+a
+For Compliance-Grade and Conditional Compliance-Grade measurands, entries are mandatory precondi-
+tions.  For Screening-Grade measurands, entries are mandatory qualifications.  For Unsupported measur-
+ands, entries describe disqualifying hardware limitations and the minimum platform capability required
+for reclassification.
+b
+See Section  for the full GPSDO requirement and UNCALIBRATEDREFERENCE flag specification.
+c
+See Section   for the I/Q imbalance frequency-dependence constraint and re-calibration rule when the
+target channel is more than 5 MHz from the calibration tone.
+d
+See Section  for the Stage 4 detection margin calibration requirement.
+e
+See Section  for the harmonic rejection deployment constraint and site-assessment procedure.
+17
+
+Reference Requirements for Full Compliance-Grade Deployments
+The following requirements apply to each measurand when compliance-grade or Conditional Compliance-
+Grade reporting is sought.  Requirements for measurands classified as Unsupported on the baseline
+HackRF One platform (field strength, ACLR) are scoped to upgraded or augmented platforms as
+defined in the Upgrade Paths section; they do not imply that these measurands are achievable on
+the unaugmented HackRF One.  All requirements are in addition to, not in substitution for, the
+preconditions listed in Table 3.
+– Carrier Frequency Error and Stability.  Reference clock traceability.  The SDR master clock
+shall be disciplined by a GPS-Disciplined Oscillator (GPSDO) or equivalent traceable
+reference providing a fractional frequency accuracy of ±1× 10
+−9
+or better.  An external
+Rubidium  oscillator  is  acceptable  only  when  it  is  itself  GPS-steered  or  carries  a  cur-
+rent  calibration  certificate  traceable  to  a  national  frequency  standard;  a  free-running
+Rubidium standard does not satisfy this requirement.
+  Estimation  algorithm.   Carrier  centre  frequency  shall  be  estimated  using  the  Stage  5
+pipeline  specified  in  the  Estimation  Pipeline  section  (parabolic  interpolation  primary,
+power centroid and edge midpoint as supporting estimators).  The power-weighted cen-
+troid  may  be  used  as  the  primary  estimator  only  when  the  peak-parabolic  method  is
+flagged invalid by the Stage 5 validity logic.
+  Guard-band decision logic.  The Guard-Band rule (Eq. 4) shall be applied using the 2 kHz
+carrier-frequency  tolerance  specified  by  FCC  Part  73  or  the  applicable  jurisdictional
+limit.   If |f
+cal
+− f
+target
+| + U ≤ T ,  the  result  is  compliant;  if |f
+cal
+− f
+target
+|− U > T ,
+non-compliant; otherwise uncertain and subject to the escalation procedure in Table 4.
+  Uncertainty-driven  escalation.   As  specified  in  Table  4,  results  in  the  uncertain  zone
+shall trigger a repeated measurement cycle with 4× extended averaging.  If the result
+remains uncertain after three attempts, it shall be logged as UNRESOLVED and escalated
+to operator review.
+  Reference drift monitoring.  The GPSDO lock state and 1 PPS timing validity shall be
+recorded continuously.  Any measurement acquired during a GPSDO unlock event shall
+be flagged UNCALIBRATED
+REFERENCE and classified as screening-grade.  Temperature of
+the SDR front-end shall be logged as a diagnostic field; if the node operates without a
+disciplined reference (e.g., during holdover), the estimated frequency drift based on the
+TCXO drift profile shall be recorded as an additional Type B uncertainty contribution.
+– Calibrated Received Power.  Reference  plane  traceability.   The  receive  chain  shall  undergo
+Tier 1 laboratory calibration establishing absolute gain accuracy at the defined reference
+plane (antenna port or SDR input bulkhead).  Tier 2 field verification shall confirm that
+the node has not drifted beyond acceptable limits relative to the Tier 1 state;  Tier 2
+alone does not establish absolute traceability.
+  Shared-risk  decision  logic.  Expanded uncertainty U  (k = 2) shall be computed in real
+time.  Values falling within the U -interval of the applicable ERP or received-power limit
+shall  be  flagged  for  verification  using  a  calibrated  mobile  unit  or  a  compliance-grade
+co-located node, per Table 4.
+  Integration method.  Calibrated received power shall be computed as the RMS-weighted
+PSD integral over the defined analysis bandwidth B (nominally 200 kHz for FM broad-
+cast), after gain-state and frequency-response correction.
+18
+
+– Field Strength (upgraded or augmented platforms only).  Scope.   Field  strength  is  classified
+Unsupported on the baseline HackRF One.  The following requirements apply only to
+platforms satisfying the reclassification criteria stated in Table 3 (Field Strength row).
+  Antenna factor application.  Frequency-dependent antenna factors (AF) shall be applied
+to convert calibrated terminal power to field strength in dBμV/m.  The AF table shall be
+derived from a Tier 1 antenna calibration and shall cover the full operating bandwidth
+at the deployment site.
+  Reference plane.  The field-strength reference plane is the antenna terminals.  All feedline
+losses and connector corrections shall be characterised and applied as part of the Tier 1
+calibration.
+– Occupied Bandwidth.  Windowing.  Blackman-Harris windowing shall be used for all occu-
+pied bandwidth measurements, consistent with the Stage 3 spectral estimation pipeline.
+Flat-top windowing shall not be used; its non-zero passband ripple introduces systematic
+bias in the power integration used for the β% boundary determination.
+  RBW correction.  Normalised compensation for the equivalent noise bandwidth (ENBW)
+of the analysis window shall be applied before the β% power boundary is computed.
+  Adaptive resolution.  If the β% (99%) boundary falls within 5 kHz of the regulatory mask
+limit, the system shall increase the FFT size to achieve finer bin resolution.  Any change
+to  the  FFT  size  shall  be  logged  in  the  measurement  metadata  and  treated  as  a  pro-
+cessing configuration change subject to version control, consistent with the Conditional
+Compliance precondition (1) in Table 3.
+  I/Q residual gate. Before reporting an occupied bandwidth result, the system shall verify
+that the IQ
+RESIDUAL flag is not set.  Results acquired when the corrected mirror power
+exceeds −40 dBc shall be invalidated per Table 3 precondition (5).
+– Adjacent-Channel and Out-of-Band Emission (upgraded platforms only).  Scope.   ACLR  is
+classified  Unsupported  on  the  baseline  HackRF  One.   The  following  requirements  ap-
+ply  only  to  platforms  satisfying  the  reclassification  criteria  stated  in  Table  3  (ACLR
+row).
+  SFDR margin gate.  Before any ACLR measurement is reported, the system shall verify
+that the platform’s in-situ SFDR exceeds the applicable regulatory mask limit by at least
+15 dB. If this condition is not met,  the measurement shall be suppressed and flagged
+UNSUPPORTED.
+  Integration  bandwidth.  The integration window shall be defined as 200 kHz centred on
+the adjacent or alternate channel carrier, consistent with the FM channel plan.
+  Uncertain results.  Uncertain ACLR results shall not support a non-compliance determi-
+nation.  Escalation shall follow the array-level coordination procedure in Section 5 using
+a higher-dynamic-range validation node where available.
+– Peak Deviation and Multiplex Power.  Demodulation bandwidth. FM demodulation shall use
+a minimum IF bandwidth of 400 kHz to capture high-order sidebands.  This requirement
+is consistent with the measurement method defined in ITU-R BS.412 for the applicable
+deviation and multiplex power indicators.
+  MPX power reference.  Integration of the multiplex signal power shall be reported in dBr
+relative to the 0 dBr reference level, defined as the power of the composite MPX signal
+19
+
+at 75 kHz peak deviation of a 1 kHz sine tone, with the 19 kHz stereo pilot present at
+its nominal level.  This definition shall be recorded in the measurement procedure.
+  Sub-carrier  verification.   The  19  kHz  pilot  tone  and  57  kHz  RDS  sub-carrier  shall  be
+independently  verified  in  magnitude.   Results  shall  be  reported  relative  to  the  main
+carrier level and stored as supporting evidence.
+– Channel Occupancy.  Detection threshold. The occupancy threshold shall be a site-calibrated
+offset above the locally verified noise floor, derived from the Tier 2 noise-floor verifica-
+tion required by Table 3 precondition (2).  A fixed default offset shall not be used for
+Conditional Compliance-Grade reporting.
+  Statistical  reporting.   Occupancy shall  be  reported  as  the  fraction of  observation  win-
+dows in which the channel is declared occupied under the documented detection rule,
+together with a confidence interval derived from the characterised false-alarm and missed-
+detection  probabilities.   The  reporting  model  shall  be  consistent  with  the  statistical
+probability framework required by Table 3 precondition (3).
+  Hysteresis  and  dwell.  Temporal hysteresis shall be applied to prevent false occupancy
+triggers from intermittent burst signals.  The hysteresis parameters shall be fixed in the
+version-controlled processing configuration per Table 3 precondition (4).
+Estimation Pipeline of Measurands
+Reference Carrier-Frequency Estimation Procedure.    The processing pipeline is specified
+for estimating the carrier centre frequency of an FM broadcast signal from complex baseband sam-
+ples acquired with a HackRF One software-defined radio receiver.  The implementation is organised
+as six sequential stages.  The pipeline is explicitly designed to retain intermediate quantities so that
+spectral estimates, candidate selection, carrier estimates, and confidence scores remain auditable
+and can be reinterpreted if calibration metadata are updated.
+– Stage 1:  Acquisition Configuration.  The acquisition stage constructs a validated hardware con-
+figuration for one HackRF capture session.  In the notebook implementation, the receiver is
+configured with
+f
+LO
+= f
+target
++ f
+off
+,   f
+off
+=
+f
+s
+4
+,
+so the observed FM channel is offset from the DC bin by one quarter of the sample rate.  The
+configuration validator additionally requires
+|f
+off
+|≥ 300 kHz,  |f
+off
+| + 150 kHz <
+f
+s
+2
+,
+so that the target FM allocation remains well separated from the DC region and inside the
+usable complex baseband span.
+The user-facing HackRF receive controls are:
+  RF amplifier state ampenable (internal +14 dB front-end amplifier),
+  IF gain ifgaindb in 8 dB steps over 0 to 40 dB,
+  baseband gain basebandgaindb in 2 dB steps over 0 to 62 dB.
+20
+
+For compatibility with older naming, legacy fields lnagaindb and vgagaindb are accepted
+and mapped to IF gain and baseband gain respectively.  The configuration records
+f
+target
+,  f
+off
+,  f
+LO
+,  f
+s
+,
+together with the individual gain settings and the total receiver gain
+G
+RX
+= G
+IF
++ G
+BB
++
+(
+14 dB,    if RF amp is enabled,
+0,otherwise.
+A warning is emitted when the total gain exceeds the notebook warning level of 32 dB, but
+clipping prevention is not enforced analytically at this stage.
+During capture, the HackRF is configured in the sequence sample-rate → frequency → gain
+chain.  A short tuning settling pause is inserted after setting the LO. Raw interleaved int8
+I/Q data are collected, converted to complex baseband as
+x[n] =
+I[n] + jQ[n]
+128
+,
+and  a  warm-up  segment  of  131,072  complex  samples  is  discarded  before  the  final  retained
+block is formed.  Clipping is detected directly from the raw ADC stream by checking whether
+any  sample  equals  127  or −128,  and  this  boolean  clipping  outcome  is  propagated  to  later
+stages.
+– Stage 2:  Preprocessing.  The preprocessing stage operates on the retained complex baseband se-
+quence  and  performs  three  sub-stages  in  fixed  order:  DC-spike  mitigation,  I/Q  imbalance
+correction, and relative noise-floor estimation.
+2a.  DC-spike mitigation.  The notebook removes residual DC contamination by processing
+the signal in non-overlapping FFT blocks of length N
+DC
+= 4096 by default.  For each
+complete block, the spectrum is FFT-shifted, a symmetric guard region centred on the
+DC bin is identified, and the guarded samples are replaced by interpolated amplitude and
+phase derived from the adjacent non-guard context bins.  With guard width N
+guard
+= 5
+and interpolation context N
+ctx
+= 4, the guarded frequency span recorded in metadata is
+W
+DC
+=
+(2N
+guard
++ 1)f
+s
+N
+DC
+.
+The implementation stores the mean pre-correction DC-bin power across the processed
+blocks as a diagnostic field.  Any trailing remainder shorter than one FFT block is passed
+through unchanged.
+2b.  I/Q  imbalance  correction.   The  corrected  complex  sequence  is  then  passed  through  a
+2× 2 widely-linear correction matrix derived from the current IQCalibration object:
+ ̃
+x[n] = C x[n],C =
+
+10
+− sinφ   cosφ/g
+
+,
+where g is the amplitude-imbalance factor and φ is the phase error in radians.  The note-
+book also provides an estimate
+iqcalibration() helper that estimates g and φ from
+a reference tone, but the correction stage itself simply applies the supplied calibration.
+21
+
+Mirror-rejection diagnostics are computed only when an explicit evaluation tone offset is
+supplied.  In that case the notebook measures mirror power before and after correction,
+reports the suppression in dB, and raises an I/Q residual flag when the corrected mirror
+remains above the notebook threshold of−40 dBc.  When no diagnostic tone is supplied,
+mirror-power metrics are stored as NaN and no residual flag is asserted.
+2c.  Relative noise-floor estimation.  The final preprocessing sub-stage estimates a  relative,
+pre-calibration noise baseline.  The corrected sequence is partitioned into up to K = 16
+complete,  non-overlapping  frames  of  length N
+noise
+=  4096  by  default.   Each  frame  is
+windowed by a Blackman–Harris window normalized to unit RMS and transformed to
+the  frequency  domain.   The  frame  power  spectra {P
+m
+(k)}  are  accumulated,  and  the
+provisional baseline is formed from the per-bin percentile, with default percentile p = 10:
+N
+prov
+(k) = percentile
+10
+{P
+m
+(k)}
+K
+m=1
+.
+The notebook then protects the baseline against signal occupancy.  It forms the mean
+spectrum across the same frames, converts both the provisional percentile baseline and
+the mean spectrum to dB, and marks as occupied any bins where the mean exceeds the
+provisional baseline by more than 6 dB. That occupied mask is dilated by 12 bins on
+each side, the masked baseline is linearly interpolated across the remaining unmasked
+bins, and the result is smoothed by a reflected moving-average filter of width 33 bins.
+If the protected mask would leave fewer than 10% of bins unmasked, the notebook falls
+back to a smoothed version of the provisional baseline instead of interpolating through
+the mask.
+The Stage 2 output therefore contains:
+  the DC-corrected and I/Q-corrected sample stream,
+  the inclusive DC guard-band width,
+  I/Q imbalance diagnostics,
+  a relative frequency-dependent noise-floor estimate noise
+floorrelativedb,
+not yet a calibrated dBm/Hz baseline.
+– Stage 3:  Spectral Estimation.  Stage 3 computes the calibrated wideband power spectral density
+used by the downstream detector and carrier estimator.  The implementation requires
+N
+FFT
+≥ 8192,   N
+FFT
+power-of-two,   M ≥ 4
+complete non-overlapping averaging frames.  The default configuration is N
+FFT
+= 8192, M =
+16, and a Blackman–Harris analysis window.  A boxcar window is explicitly rejected because
+the notebook treats its sidelobe suppression as inadequate for FM monitoring.
+For each complete frame m, the PSD estimate is computed as
+ˆ
+P
+m
+(k) =
+
+
+
+P
+N
+FFT
+−1
+n=0
+x
+m
+[n]w[n]e
+−j2πkn/N
+FFT
+
+
+
+2
+f
+s
+P
+N
+FFT
+−1
+n=0
+|w[n]|
+2
+,
+and Welch averaging yields
+ˆ
+P (k) =
+1
+M
+M
+X
+m=1
+ˆ
+P
+m
+(k).
+22
+
+The  resulting  average  is  first  represented  in  dBFS/Hz,  then  converted  to  dBm/Hz  by  the
+scalar gain-calibration term
+C
+gain
+= (−10 dBm)− G
+RX
++ L
+cable
+− G
+ant
+,
+with the antenna term applied only when antenna correction is explicitly enabled. An optional
+per-bin frequency-response correction vector may also be applied when its length matches the
+FFT size.
+The Stage 3 frequency axis is constructed as
+f
+k
+= f
+baseband,k
++ f
+LO
+− f
+off
+,
+so the Stage 1 tuning offset is already removed at this point.  This is the frequency axis used
+by both Stage 4 and Stage 5.
+The Stage 2 relative noise floor is then resampled from the Stage 2 FFT grid to the Stage 3
+FFT grid by frequency interpolation.  The calibrated Stage 3 noise floor is formed by adding
+both the Stage 3 scalar gain correction and the Stage 2 density offset
+−10 log
+10
+(f
+s
+N
+noise
+),
+yielding  the  stored  field noise
+floorcalibrateddbmhz.   The  notebook  also  retains  the
+resampled  relative  baseline  separately  as noisefloorrelativedb.   Shape  and  finiteness
+checks are applied to both arrays before Stage 3 returns.
+– Stage 4:  Channel Candidate Detection.  Stage 4 does  not  search for  isolated spectral lines.  In-
+stead, it detects occupied above-threshold regions in the calibrated PSD. A smoothed baseline
+threshold is formed from the calibrated noise floor:
+T (k) =
+e
+N
+cal
+(k) + ∆
+det
+,
+with default detection margin
+∆
+det
+= 8 dB,
+and allowed bounds 6 to 20 dB. The threshold itself is smoothed by a reflected moving-average
+filter of width 9 bins.
+The occupied-mask rule is
+ˆ
+P
+cal
+(k) > T (k).
+Short gaps in that mask are closed when their width does not exceed the equivalent of 15
+kHz.  Regions shorter than the equivalent of 40 kHz are discarded.
+For each surviving region [k
+s
+,k
+e
+], the notebook computes:
+  peak bin and peak power inside the region;
+  median calibrated noise floor over the region;
+  region SNR as peak power minus regional median noise floor;
+  raw occupied bandwidth
+W
+occ
+= f [k
+e
+]− f [k
+s
+];
+  edge midpoint
+f
+edge
+=
+1
+2
+ 
+f [k
+s
+] + f [k
+e
+]
+
+;
+23
+
+  power centroid obtained from the positive linear-power excess above the calibrated noise
+floor across the region;
+  shoulder power, defined as the maximum PSD in the left or right outer shoulder windows
+extending up to ±400 kHz beyond the region;
+  region prominence
+Π = P
+peak
+− P
+shoulder
+.
+The Stage 4 candidate centre frequency stored in the candidate object is the edge midpoint,
+not  the  peak-bin  frequency  and  not  the  centroid.   A  bandwidth-out-of-range  flag  is  raised
+when
+W
+occ
+/∈ [40 kHz, 400 kHz].
+A candidate is considered a valid carrier only when it is not marked as an artifact, is not in
+DC proximity, is not width-rejected, and has
+Π≥ 10 dB.
+The notebook includes three artefact checks:
+(i)  DC proximity:  in the currently executed run
+stage4(...)  code path, the default argu-
+ment dcguardbandhz is 30 kHz, and the implemented flag test is
+|f − f
+target
+| < 2× 30 kHz.
+Hence,  in  the  executed  integration  path,  DC  proximity  is  effectively  tested  within  60
+kHz of the target frequency, not from a Stage 2-derived W
+DC
+expression.
+(ii)  Mirror-image test:  in the current executed run
+stage4(...)  code path, candidate pairs
+are compared around the reflection axis
+f
+refl
+= f
+target
+.
+A candidate is marked as a mirror only when its paired reflected candidate lies within
+5 kHz of the expected mirror location, differs in peak power by at least 6 dB, and has
+sufficiently similar bandwidth (minimum width ratio 0.5).
+(iii)  Harmonic test:  harmonic flagging is present only as a placeholder and currently performs
+no rejection.
+Each candidate is ranked by the notebook score
+S = 0.45S
+prox
++ 0.25S
+snr
++ 0.20S
+width
++ 0.10S
+prom
+,
+where
+S
+prox
+= exp
+
+−
+|f
+c
+− f
+target
+|
+150 kHz
+
+,
+S
+snr
+= clip
+
+SNR
+25
+, 0, 1
+
+,   S
+width
+=
+(
+1,  W
+occ
+∈ [100, 250] kHz,
+0,    otherwise,
+and
+S
+prom
+= clip
+
+Π
+20 dB
+, 0, 1
+
+.
+Candidates closer than 100 kHz are deduplicated by keeping the higher-scored candidate.  The
+return list is ordered as all valid carriers in descending score, followed by invalid candidates
+in descending score, and is truncated to at most 8 entries.
+24
+
+– Stage 5:  Carrier-Frequency Estimation.  Stage 5 estimates the carrier frequency from the primary
+valid candidate returned by Stage 4 unless a different candidate is explicitly supplied.
+– Primary estimator:  peak-centric parabolic interpolation.
+The primary estimator is a three-point parabolic interpolation around the peak bin inside
+the selected occupied region.  The notebook accepts the Stage 4 threshold array only for
+shape validation and API compatibility; it is not  used as a Stage 5 peak-validity gate.
+The validity logic is purely geometric and local.
+Let k
+⋆
+be the maximum-PSD bin inside the region.  The estimator first requires that k
+⋆
+is not on the global spectral boundary and that the peak is a local maximum in the dB
+domain:
+y
+0
+≥ y
+−1
+,   y
+0
+≥ y
++1
+,
+with local prominence
+y
+0
+− max(y
+−1
+,y
++1
+)≥ 0.5 dB.
+The quadratic refinement is then carried out in linear power :
+p
+−1
+= 10
+y
+−1
+/10
+,   p
+0
+= 10
+y
+0
+/10
+,   p
++1
+= 10
+y
++1
+/10
+,
+d = p
+−1
+− 2p
+0
++ p
++1
+,   δ =
+1
+2
+p
+−1
+− p
++1
+d
+.
+The curvature must be finite, non-degenerate, and concave (d < 0).  The raw sub-bin
+offset must satisfy
+|δ|≤ 1.
+If so, it is clipped conservatively into
+δ ∈ [−0.5, +0.5]
+before the refined frequency is reported:
+ˆ
+f
+peak
+= f [k
+⋆
+] + δ ∆f
+bin
+.
+If any of the above checks fails, the peak-parabolic method is marked invalid and Stage 5
+falls back to a supporting estimator.
+– Supporting estimators.
+Two supporting estimators are always computed on the calibrated spectral arrays:
+  Edge  midpoint:   Stage  5  recomputes  the  left  and  right  threshold  crossings  using
+the calibrated PSD and the calibrated Stage 4 threshold, linearly interpolates both
+crossings, and reports the midpoint frequency and interpolated edge bandwidth.
+  Power centroid:  Stage 5 computes a power centroid using the positive linear-power
+excess above the calibrated  noise floor within the selected region.
+– Optional phase-domain refinement.
+The notebook preserves API switches for MUSIC and Pisarenko refinement but inten-
+tionally leaves phase-domain refinement disabled in the compliance-tuned Stage 5 path.
+The corresponding return field is therefore None.
+25
+
+– WBFM-aware repeatability diagnostic.
+Legacy  per-frame  instantaneous  frequency  statistics  are  intentionally  disabled  in  the
+current notebook because they are not physically meaningful for WBFM carrier-centre
+estimation.  The fields frame
+frequencyestimateshz, framestdhz, framemeanhz,
+and frameinconsistencyflag are retained for compatibility but are set to
+[ ],0,
+ˆ
+f
+primaryfallback
+,  False,
+respectively, where
+ˆ
+f
+primaryfallback
+equals the peak-parabolic estimate when that estimate
+is valid, and otherwise equals the centroid estimate.
+Instead,  repeatability is measured across repeated  averaged  PSD estimates built from
+non-overlapping  blocks  of  the  Stage  3  frame  spectra.   The  block  count  defaults  to  4,
+limited  by  however  many  frame  spectra  are  available.   Within  each  block,  the  stored
+per-frame PSDs are converted from dB to linear power, averaged, converted back to dB,
+and re-estimated by the same Stage 5 method cascade:  peak-parabolic → centroid →
+edge midpoint → fallback frequency.  The resulting list {
+ˆ
+f
+block,i
+} yields
+σ
+block
+= std{
+ˆ
+f
+block,i
+},   μ
+block
+= mean{
+ˆ
+f
+block,i
+}.
+A block-repeatability warning flag is raised when
+σ
+block
+> 1000 Hz.
+To  ensure  consistency  with  the  stored  Stage  3  frame  spectra,  the  block  repeatability
+estimator converts the calibrated Stage 3 noise floor and threshold back to the frame-
+relative domain by subtracting the Stage 3 scalar gain correction before applying the
+repeated-estimation cascade.
+– Final estimator selection.
+The notebook selects the final raw estimate as follows:
+(i)  use the peak-parabolic estimate if valid;
+(ii)  otherwise use the centroid if finite;
+(iii)  otherwise use the edge midpoint.
+A  fallback  flag  and  a  fallback-reason  string  are  emitted  whenever  the  peak-parabolic
+estimate is invalid.
+– Frequency correction and deviation.
+The final calibrated estimate is
+ˆ
+f
+cal
+=
+ˆ
+f
+raw
++ ε
+cal
+,
+where ε
+cal
+is the residual frequency-calibration correction supplied through FrequencyCalibration.
+No  additional  offset-tuning  subtraction  is  applied  in  Stage  5  because  the  Stage  3  fre-
+quency axis has already been corrected for f
+off
+.
+The reported carrier deviation from the assigned frequency is
+∆f =
+ˆ
+f
+cal
+− f
+target
+.
+– Uncertainty estimate.
+The Stage 5 residual-frequency uncertainty is a conservative maximum of:
+26
+
+  a minimum interpolation residual equal to 5% of the FFT bin spacing,
+  the supplied calibration uncertainty,
+  the block-repeatability standard deviation,
+  pairwise disagreement terms between the available Stage 5 methods.
+Formally, the notebook returns
+u
+f
+= max
+
+0.05 ∆f
+bin
+, u
+cal
+, σ
+block
+, |
+ˆ
+f
+peak
+−
+ˆ
+f
+cent
+|, |
+ˆ
+f
+peak
+−
+ˆ
+f
+edge
+|, |
+ˆ
+f
+edge
+−
+ˆ
+f
+cent
+|
+
+,
+with the peak-related terms included only when the peak-parabolic estimate is valid.
+– Stage 6 — Confidence Scoring and Result Assembly.  The notebook computes a composite confi-
+dence scalar
+C ∈ [0, 1]
+from six normalized sub-scores:
+C = 0.25c
+agree
++ 0.25c
+block
++ 0.15c
+geom
++ 0.15c
+region
++ 0.10c
+margin
++ 0.10c
+cal
+.
+The six sub-scores are defined exactly as follows.
+– Agreement score c
+agree
+.
+The notebook computes the method spread as the range of the finite values among
+ˆ
+f
+peak
+,
+ˆ
+f
+cent
+,
+ˆ
+f
+edge
+,
+and then sets
+c
+agree
+= exp
+ 
+−
+
+∆f
+spread
+1500 Hz
+
+2
+!
+.
+– Block-repeatability score c
+block
+.
+Using the Stage 5 block-repeatability standard deviation,
+c
+block
+= exp
+
+−
+
+σ
+block
+500 Hz
+
+2
+
+.
+– Peak-geometry score c
+geom
+.
+This score combines the local parabolic-peak prominence and the absolute sub-bin offset:
+c
+geom
+= clip
+
+Π
+local
+2 dB
+, 0, 1
+
+· exp
+ 
+−
+
+|δ|
+0.7
+
+4
+!
+.
+– Region-definition score c
+region
+.
+The score starts at 1 and is multiplied by 0.7 for each missing edge, multiplied by another
+0.7 if the occupied bandwidth lies outside the notebook ideal interval
+[80 kHz, 250 kHz],
+and finally multiplied by the asymmetry penalty
+exp
+
+
+−
+ 
+|
+ˆ
+f
+edge
+−
+ˆ
+f
+cent
+|
+5000 Hz
+!
+2
+
+
+.
+27
+
+– Baseline-margin score c
+margin
+.
+The Stage 5 peak-above-baseline margin is mapped as
+c
+margin
+= clip
+
+Π
+baseline
+− 6 dB
+10 dB
+, 0, 1
+
+.
+– Calibration score c
+cal
+.
+The calibration-quality term is
+c
+cal
+= exp
+
+−
+
+u
+cal
+1000 Hz
+
+2
+
+.
+The Stage 6 quality-flag word is assembled from the carrier estimate, the preprocessing result,
+and the acquisition result.  The notebook may set:
+ DC
+PROXIMITY,
+ IQRESIDUAL,
+ LOWSNR when SNR < 10 dB,
+ GAIN
+SATURATION when raw-sample clipping was detected,
+ BLOCKREPEATABILITY,
+ METHOD
+DISAGREEMENT,
+ FALLBACKESTIMATORUSED,
+ UNCALIBRATED
+REFERENCE.
+A  reference  is  treated  as  uncalibrated  when  the  reference-source  field  is  empty  or  one  of
+{uncalibrated, unknown, none}, or when the calibration-state identifier is empty or one of
+{default, unknown, none}.
+The final Stage 6 result packages:
+  the calibrated carrier estimate and its deviation from target,
+  SNR, occupied bandwidth, edge bandwidth, and noise-floor-at-peak,
+  the full confidence breakdown,
+  DC and I/Q diagnostics,
+  Stage 5 estimator details and disagreement fields,
+  FFT and averaging metadata,
+  calibration metadata and reference source,
+  an observation-window duration.
+When  Stage  6  is  supplied  with  explicit  Stage  3  FFT  size  and  averaging-frame  count,  the
+observation window is computed as
+T
+obs
+=
+N
+FFT
+M
+f
+s
+;
+otherwise it defaults to the retained acquisition length divided by the sample rate.
+28
+
+Uncertainty Budget and Reporting
+Uncertainty Classification.    Measurement uncertainty shall be evaluated and reported in accor-
+dance with the Guide to the Expression of Uncertainty in Measurement  (GUM, JCGM 100:2008).
+Every reported compliance measurand shall be accompanied by a documented, itemised uncertainty
+budget that identifies all contributing sources, their type, their standard uncertainty value, and the
+calibration tier from which they are derived.  The budget shall be archived with the measurement
+record and shall be traceable to the calibration certificate of the node that produced the result.
+Uncertainty contributions are classified as follows.
+– Type A uncertainty (u
+A
+).  Evaluated  by  statistical  analysis  of  repeated  observations  under  re-
+peatability  conditions.   Type  A  contributions  include  thermal  noise,  digitisation  jitter,  en-
+vironmental  fluctuations,  and  algorithmic  repeatability.   The  standard  uncertainty  is  the
+experimental standard deviation of the mean of n repeated observations:
+u
+A
+=
+s
+√
+n
+,  s =
+v
+u
+u
+t
+1
+n− 1
+n
+X
+i=1
+(x
+i
+−  ̄x)
+2
+.(1)
+The number of observations n shall be sufficient to make the Type A contribution statistically
+meaningful;  a  minimum  of n  =  10  independent  estimates  is  recommended  for  compliance-
+grade measurands.
+– Type B uncertainty (u
+B
+).  Evaluated by means other than statistical analysis, including calibra-
+tion  certificates,  manufacturer  specifications,  prior  measurement  data,  engineering  judge-
+ment, and physical modelling.  Type B contributions include calibration residuals, reference-
+standard uncertainty, gain non-linearity, frequency-response flatness, and temperature drift.
+The standard uncertainty for a Type B contributor with stated limits ±a and assumed dis-
+tribution p is:
+u
+B
+=
+
+
+
+
+
+a/
+√
+3,    rectangular distribution,
+a/
+√
+6,    triangular distribution,
+a/2,normal distribution at k = 2.
+(2)
+The  assumed  distribution  shall  be  stated  and  justified  in  the  uncertainty  budget  for  each
+contributor.
+Combined and Expanded Uncertainty.    The combined standard uncertainty u
+c
+is obtained
+by combining all Type A and Type B standard uncertainty components.  When all contributions
+are mutually independent, the combination reduces to a root-sum-square:
+u
+c
+=
+s
+X
+i
+u
+2
+A,i
++
+X
+j
+u
+2
+B,j
+.(3)
+When two or more Type B contributors share a common physical cause — for example, gain non-
+linearity  and  frequency-response  flatness  both  arising  from  the  same  front-end  hardware  —  the
+independence assumption is not valid.  In such cases the full GUM covariance form shall be used:
+u
+2
+c
+=
+X
+i
+u
+2
+i
++ 2
+X
+i
+X
+j>i
+r(u
+i
+,u
+j
+)u
+i
+u
+j
+,(4)
+29
+
+where r(u
+i
+,u
+j
+) is the estimated correlation coefficient between contributions u
+i
+and u
+j
+.  The pres-
+ence and magnitude of significant correlations shall be assessed and documented in the uncertainty
+budget.  If correlations are unknown, they shall be assumed to be zero with a documented justifi-
+cation; this assumption shall be flagged as a limitation in the associated compliance record.
+The expanded uncertainty U  is obtained by multiplying the combined standard uncertainty by
+a coverage factor k:
+U = k· u
+c
+.(5)
+For regulatory reporting, k = 2 shall be used as the default, corresponding to an approximately
+95% confidence interval under a normal distribution.  When the uncertainty budget is dominated by
+Type B contributors with non-Gaussian distributions (e.g., rectangular or triangular), the effective
+degrees of freedom ν
+eff
+shall be estimated using the Welch-Satterthwaite formula and k  selected
+from the t-distribution at the 95.45% level for ν
+eff
+degrees of freedom.  The value of k actually used
+shall be recorded in every compliance report alongside U .
+Periodic  Re-Evaluation.    The  uncertainty  budget  for  each  deployed  node  and  each  reported
+measurand shall be re-evaluated whenever any of the following conditions occurs:
+  A Tier 1 or Tier 2 calibration is performed or a calibration certificate is renewed;
+  A hardware change is made to any component of the receive chain, including antenna, feedline,
+LNA, filter, or SDR unit;
+  A software or firmware update affects any stage of the processing pipeline that contributes
+to the measurand estimate;
+  Tier 2 field verification reveals a drift exceeding the defined warning limit;
+  Environmental conditions at the deployment site change in a way that may affect any Type B
+contributor (e.g., seasonal temperature range, installation of nearby transmitters).
+Re-evaluation results shall be archived with a timestamp, the triggering condition, and the revised
+uncertainty budget.  If the revised expanded uncertainty U  exceeds the guard-band width for any
+compliance-grade measurand, the affected measurand shall be downgraded to Screening-Grade until
+the uncertainty is reduced to an acceptable level or the decision rule is revised under documented
+authority.
+Uncertainty-Aware Compliance Decisions.    When comparing a calibrated measurand esti-
+mate x  against  a  regulatory  threshold T  at  reference  point x
+ref
+,  the  system  shall  apply  one  of
+the three decision rules defined formally in Equations 6–??.  This paragraph provides a normative
+summary; the formal mathematical definitions, boundary conditions, and applicability constraints
+in the following section are authoritative and take precedence in case of any ambiguity.
+– Simple threshold rule (non-conservative). |x− x
+ref
+| ≤ T ⇒ compliant; |x− x
+ref
+| > T ⇒ non-
+compliant.  This rule does not account for measurement uncertainty and shall be used only
+when the expanded uncertainty satisfies U < 0.1T , or when the applicable regulatory frame-
+work  explicitly  requires  an  uncertainty-blind  comparison.   It  shall  not  be  applied  to  any
+measurand for which U ≥ 0.1T  without documented justification and explicit authority from
+the responsible regulatory body.
+30
+
+– Guard-band rule (conservative, ISO 14253-1). |x−x
+ref
+| +U ≤ T ⇒ compliant; |x−x
+ref
+|−U >
+T ⇒ non-compliant;    otherwise ⇒ uncertain.  Results in the uncertain zone [T − U, T + U ]
+shall be escalated per the measurand-specific procedure in Table ??.  This rule minimises the
+risk of false compliance and is the default for carrier-frequency error,  occupied bandwidth,
+and adjacent-channel emission.
+– Shared-risk rule (equal false-accept and false-reject risk).  Acceptance zone: x
+ref
+± (T − U );    re-
+jection  zone: |x− x
+ref
+| > T  + U ;    uncertain  zone: T − U < |x− x
+ref
+| ≤ T + U .   Results
+in  the  uncertain  zone  shall  be  flagged  for  verification  using  a  calibrated  mobile  unit  or  a
+compliance-grade validation node; they shall not be resolved by operator qualification alone
+without corroborating evidence.  This rule is the default for calibrated received power.
+The adopted decision rule shall be documented in the applicable compliance procedure, recorded
+in the metadata of every compliance determination, and shall not be changed between measurement
+cycles for the same station and measurand without a documented configuration change record.  The
+measurand-specific default rule and the handling procedure for uncertain outcomes are specified in
+Table ??.
+Compliance Decision Logic and Uncertainty Handling
+Three  decision  frameworks  are  supported.   The  applicable  rule  for  each  primary  measurand  is
+specified  in  Table  4.   The  rule  shall  be  selected  before  measurement  begins,  documented  in  the
+compliance procedure, and shall not be changed between measurement cycles for the same station
+and measurand pair without a configuration change record.
+– Simple Threshold Rule (zero guard band).
+Decision =
+(
+COMPLIANT,   |x− x
+ref
+|≤ T,
+NON-COMPLIANT, |x− x
+ref
+| > T,
+(6)
+where x
+ref
+is  the  regulatory  reference  point  (e.g.,  assigned  carrier  frequency,  0  dBm  refer-
+ence  level)  and T  is  the  applicable  regulatory  threshold.   This  rule  does not  account  for
+measurement uncertainty and shall be used only when:
+ U < 0.1T , so that uncertainty is negligible relative to the threshold, or
+  the regulatory framework explicitly requires an uncertainty-blind comparison.
+It shall not be applied when U ≥ 0.1T without documented justification and explicit authority
+from the responsible regulatory body.
+– Conservative Guard-Band Rule (ISO 14253-1).
+Decision =
+
+
+
+
+
+COMPLIANT,   |x− x
+ref
+| + U ≤ T,
+NON-COMPLIANT, |x− x
+ref
+|− U > T,
+UNCERTAIN,otherwise.
+(7)
+This rule minimises the risk of false compliance by requiring the worst-case bound|x−x
+ref
+|+U
+to remain within the limit. Results falling in the uncertain zone [T−U, T +U ] shall be handled
+per Table 4.
+31
+
+– Shared-Risk Rule (equal false-accept and false-reject risk).  Define:
+A =
+
+x
+ref
+− (T − U ), x
+ref
++ (T − U )
+
+,
+R =
+ 
+−∞, x
+ref
+− (T + U )
+
+∪
+ 
+x
+ref
++ (T + U ), ∞
+
+.
+Decision =
+
+
+
+
+
+COMPLIANT,x∈ A,
+NON-COMPLIANT,  x∈ R,
+UNCERTAIN,x /∈ A∪ R.
+(8)
+The uncertain zone is the symmetric annular region (T − U ) < |x− x
+ref
+| ≤ (T + U ); points
+on the boundary |x− x
+ref
+| = T + U  are assigned to NON-COMPLIANT. This rule is appropriate
+when  the  economic  or  operational  consequences  of  false  acceptance  and  false  rejection  are
+comparable.
+Measurand-Specific Decision Rules.    Table 4 specifies the default decision rule and the han-
+dling  procedure  for  uncertain  outcomes  for  each  primary  compliance  measurand.   The  table  is
+normative; deviations require documented authority.
+Policy  Override  and  Escalation.    When  a  measurand  result  remains  in  the  uncertain  zone
+after all handling procedures in Table 4 have been exhausted, the system shall execute the following
+escalation sequence:
+1.  Record the result with UNRESOLVED status, including the measurand value, expanded uncer-
+tainty U , decision rule applied, number of repeated attempts, and the reason the uncertain
+zone could not be resolved.
+2.  Generate an escalation alert containing all supporting evidence: the bounded raw I/Q excerpt
+associated with the triggering acquisition window, the calibrated PSD estimate, the itemised
+uncertainty budget, and the current calibration state of the node.
+3.  Suspend automated compliance determination for the affected station and measurand pair.
+The suspension shall be time-bounded:  if operator review or validation instrumentation de-
+ployment  has  not  resolved  the  result  within  the  interval  defined  in  the  system  operating
+procedure (default:  72 hours), the result shall be automatically escalated to the responsible
+regulatory authority with UNRESOLVED status.
+4.  Where resolution requires deployment of a higher-capability validation node, the deployment
+and  corroboration  procedure  shall  follow  the  array-level  fusion  rules  defined  in  Section  5,
+including eligibility criteria, inter-node calibration verification, and consistency checks.
+5.  Continue monitoring and archiving all other measurands for the affected station throughout
+the suspension period.
+The escalation workflow, time bounds, notification recipients, and authority for manual override
+shall  be  documented  in  the  system  operating  procedure  and  access-control  policy.   Any  manual
+override of an UNRESOLVED result shall be recorded with the identity of the authorising operator,
+the justification, and any supporting evidence, and shall be retained in the audit archive.
+32
+
+Table 4:  Measurand-Specific Compliance Decision Rules
+MeasurandDefault ruleHandling of UNCERTAIN result
+CarrierFrequency
+Error
+Guard-BandTrigger  repeated  measurement  with  4×  ex-
+tended averaging. If uncertain after 3 attempts,
+log as UNRESOLVED and escalate to operator.
+Calibrated  Received
+Power
+Shared-RiskFlag for field-strength verification using a cal-
+ibrated  mobile  unit  or  compliance-grade  co-
+located  node.   Do  not  issue  a  violation  notice
+based solely on an uncertain received-power re-
+sult.
+Field StrengthN/A
+Unsupported
+a
+No compliance determination is made.  Result
+shall be suppressed and flagged UNSUPPORTED in
+all reports.
+Occupied BandwidthGuard-BandRepeat   with   doubled   FFT   size   (finer   bin
+resolution).
+b
+If the uncertain zone width 2U <
+5 kHz after repetition, accept with a qualifica-
+tion  note  recording U ,  FFT  size,  and  window
+function.
+Adjacent-Channel
+Leakage
+Guard-BandUncertain  ACLR  results  shall  not  support  a
+non-compliance  determination.Escalate  per
+the  array-level  coordination  procedure  in  Sec-
+tion 5 using a higher-dynamic-range validation
+node.
+PeakDeviation/
+Multiplex Power
+Guard-BandRepeat  measurement  with  extended  demodu-
+lation  window.   If  uncertain  after  3  attempts,
+escalate to operator.  Do not issue violation no-
+tice on uncertain result alone.
+Channel OccupancyGuard-Band
+c
+Report occupancy as a statistical estimate P
+occ
+with a 95% confidence interval derived from the
+characterised false-alarm and missed-detection
+probabilities.  Uncertain results below the con-
+fidence  threshold  shall  not  support  a  non-
+compliance determination.
+a
+Field Strength is Unsupported on the baseline HackRF One platform (Table 3).  This row applies
+to upgraded platforms meeting the reclassification criteria.
+b
+Any change to FFT size shall be logged as a processing configuration change and is subject to
+version control per Table 3 precondition (1) for occupied bandwidth.
+c
+Channel Occupancy is inherently statistical.  The Guard-Band rule is applied to the estimated
+occupancy fraction O
+T
+against the policy-defined occupancy threshold, with U derived from the
+characterised false-alarm and missed-detection probabilities.  The Simple Threshold rule shall
+not be used for Conditional Compliance-Grade occupancy reporting.
+33

@@ -4,6 +4,7 @@ import { createRouter, publicQuery } from "../middleware";
 import {
   compilePdf,
   generateTexReport,
+  generateMdReport,
   health,
   askLocalAgent,
   deepAskAboutDocument,
@@ -12,7 +13,6 @@ import {
   scanDocuments,
   searchDocuments,
   compileLocalTex,
-  getTexBuffer,
 } from "../services/local-docs";
 
 export const docsRouter = createRouter({
@@ -40,6 +40,16 @@ export const docsRouter = createRouter({
       topic: z.string().optional(),
     }))
     .mutation(({ input }) => generateTexReport(input.documentIds || [], input.title, !!input.includeChatHistory, input.chatMessages || [], input.topic || undefined)),
+
+  generateMd: publicQuery
+    .input(z.object({
+      documentIds: z.array(z.string()).optional(),
+      includeChatHistory: z.boolean().optional(),
+      chatMessages: z.array(z.string()).optional(),
+      title: z.string().default("Local Research Agent Document Report"),
+      topic: z.string().optional(),
+    }))
+    .mutation(({ input }) => generateMdReport(input.documentIds || [], input.title, !!input.includeChatHistory, input.chatMessages || [], input.topic || undefined)),
 
   compilePdf: publicQuery
     .input(z.object({ artifactId: z.string() }))
@@ -85,6 +95,18 @@ export const docsRouter = createRouter({
       const buffer = await getTexBuffer(texPath);
       return {
         filename,
+        data: buffer.toString("base64"),
+      };
+    }),
+  downloadMd: publicQuery
+    .input(z.object({ artifactId: z.string() }))
+    .mutation(async ({ input }) => {
+      const { listArtifacts, getMdBuffer } = await import("../services/local-docs");
+      const artifact = listArtifacts().find(a => a.id === input.artifactId);
+      if (!artifact || !artifact.mdPath) throw new Error("Markdown file not found");
+      const buffer = await getMdBuffer(artifact.mdPath);
+      return {
+        filename: path.basename(artifact.mdPath),
         data: buffer.toString("base64"),
       };
     }),
