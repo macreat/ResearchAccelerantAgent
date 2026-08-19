@@ -91,15 +91,20 @@ export async function analyzePDFContentWithLLM(
     return fallbackAnalysis(extractedText, query);
   }
 
-  // Chunking strategy: process text in chunks of ~12000 chars to cover more ground
-  const chunkSize = 12000;
+  // Chunking strategy: overlapping chunks of ~2500 chars so that 4 chunks
+  // (~10000 chars, roughly 2.5-3k tokens) fit inside the local num_ctx budget.
+  // The overlap keeps content near chunk boundaries from being lost.
+  const CHUNK_SIZE = 2500;
+  const CHUNK_OVERLAP = 300;
+  const MAX_CHUNKS = 4;
   const chunks = [];
-  for (let i = 0; i < extractedText.length; i += chunkSize) {
-    chunks.push(extractedText.substring(i, i + chunkSize));
+  for (let i = 0; i < extractedText.length; i += CHUNK_SIZE - CHUNK_OVERLAP) {
+    chunks.push(extractedText.substring(i, i + CHUNK_SIZE));
   }
 
-  // Only process top 4 most relevant chunks to keep it efficient but comprehensive
-  const relevantChunks = rankChunksByRelevance(chunks, query).slice(0, 4);
+  // Only process top MAX_CHUNKS most relevant chunks to stay within the
+  // local num_ctx token budget.
+  const { chunks: relevantChunks, matchedKeywords } = rankChunksByRelevance(chunks, query);
   const combinedContext = relevantChunks.join("\n---\n");
 
   try {
@@ -115,7 +120,7 @@ export async function analyzePDFContentWithLLM(
         prompt,
         stream: false,
         options: {
-          num_ctx: 16384, // Increase context window for deep research
+          num_ctx: 4096, // Local budget: fits ~3k context tokens + prompt on low-RAM hosts
           temperature: 0.2, // Keep it factual
         }
       }),
@@ -132,7 +137,9 @@ export async function analyzePDFContentWithLLM(
     return {
       query,
       answer: answer.trim(),
-      confidence: 0.9,
+      // When no chunk matched any query keyword the answer is speculative:
+      // do not present it with full confidence.
+      confidence: matchedKeywords ? 0.9 : 0.5,
       relatedSections: extractRelevantSections(combinedContext, query, 3),
     };
   } catch (error) {
@@ -141,9 +148,12 @@ export async function analyzePDFContentWithLLM(
   }
 }
 
-function rankChunksByRelevance(chunks: string[], query: string): string[] {
+function rankChunksByRelevance(
+  chunks: string[],
+  query: string
+): { chunks: string[]; matchedKeywords: boolean } {
   const queryWords = query.toLowerCase().split(/\s+/);
-  return chunks
+  const scored = chunks
     .map((chunk) => {
       let score = 0;
       const lowerChunk = chunk.toLowerCase();
@@ -154,8 +164,25 @@ function rankChunksByRelevance(chunks: string[], query: string): string[] {
       }
       return { chunk, score };
     })
-    .sort((a, b) => b.score - a.score)
-    .map((item) => item.chunk);
+    .sort((a, b) => b.score - a.score);
+  const matchedKeywords = scored.length > 0 && scored[0].score > 0;
+
+  let selected: string[];
+  if (!matchedKeywords) {
+    // No literal keyword hit anywhere in the document: the top-4 stable sort
+    // would always return the document head, hiding later sections. Spread
+    // the selection evenly across the whole document instead so the model
+    // still sees a representative sample of the paper.
+    const spread = Math.max(1, Math.floor(scored.length / 4));
+    selected = scored
+      .filter((_, index) => index % spread === 0)
+      .slice(0, 4)
+      .map((item) => item.chunk);
+  } else {
+    selected = scored.slice(0, 4).map((item) => item.chunk);
+  }
+
+  return { chunks: selected, matchedKeywords };
 }
 
 function buildAnalysisPrompt(

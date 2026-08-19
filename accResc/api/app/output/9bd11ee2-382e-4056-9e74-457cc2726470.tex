@@ -1,0 +1,219 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[english]{babel}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage[most]{tcolorbox}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{xcolor}
+\definecolor{unalblue}{RGB}{0,56,101}
+\definecolor{boxbg}{RGB}{245,248,250}
+\newtcolorbox{resultbox}[1][]{colback=boxbg,colframe=unalblue,title=#1,fonttitle=\bfseries}
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{\thepage}
+\usepackage[hidelinks]{hyperref}
+\title{Local Research Agent Document Report}
+\author{Local Linux Research Agent}
+\date{\today}
+\begin{document}
+\maketitle
+\thispagestyle{fancy}
+
+\section\emph{{Chat History & LLM Inferences}
+\begin{itemize}
+\noindent \textbf{1.} user: FM\\\n\noindent \textbf{2.} agent: I found 1 local document related to "FM".
+This first prototype uses local document metadata and filenames. Enable Ollama plus text extraction/embeddings for deeper inference over PDF contents.
+
+\item 03SpectrumSensingFM0 (03SpectrumSensingFM0.pdf, 488294 bytes, sha256 3e283c6d13cf610d4276a7e64711ba4441938807abb99de3f772e2cc049cb1b2, type pdf)\\\n\noindent \textbf{3.} user: [Deep] Cuáles son las 6 etapas del pipeline de monitoreo FM y qué hace cada una?"\\\n\noindent \textbf{4.} agent: [Deep Analysis of 03SpectrumSensingFM0]
+
+Heuristic Analysis: The document mentions "Cuáles son las 6 etapas del pipeline de monitoreo FM y qué hace cada una?"" in several sections. Key findings related to this query include: Uncertainty Budget and Reporting
+All measurements intended for regulatory compliance use shall be accompanied by a documented
+uncertainty  evaluation  in  accordance  with  the  Guide  to  the  Expression  of  Uncertainty  in  Mea-
+surement (GUM) [?].  The uncertainty budget shall account for all known sources of random and
+systematic error, shall be traceable to the calibration hierarchy defined above, and shall be reported
+alongside the measurand value in all compliance records and evidence archives.
+Uncertainty Classification, the associated Uncertainty-Aware Compliance Decisions, and Peri-
+odic Re-Evaluation Requirements are detailed in Appendix
+\item Node-Level DSP Pipeline for FM Compliance Monitoring
+The compliance monitoring pipeline transforms raw complex baseband observations into reported
+measurands, decision outcomes, and supporting evidence.  However, the technical rigor of such a
+pipeline implementation is often challenged by the hardware-software interface.
+The principal processing stages are shown in Fig. 2 and described below.
+Wideband
+Acquisition
+Conditioning
+Channeli-
+zation \&
+Tracking
+Per-Channel
+Demodulation
+Identification
+Compliance
+Measurand
+Estimation
+Rule
+Evaluation
+\& Alerting
+Reporting
+\& Evidence
+Archiving
+Input:
+Raw I/Q
+Samples
+Output:
+Compliance Reports
+\& Evidence Logs
+Figure 2:  Implemented SDR-based FM broadcast compliance monitoring pipeline.  Raw I/Q sam-
+ples are processed through six stages, from wideband acquisition and conditioning to reporting and
+evidence archiving, to enable automated regulatory assessment.
+– Wideband Acquisition \& Conditioning:  Raw I/Q samples are acquired from the SDR front end
+together with receiver-configuration and timing metadata.  This stage establishes the wide-
+band observation used by all downstream analyses.
+Its principal functions are:
+  Hardware  configuration:   initialization  of  SDR  operating  parameters,  including  center
+frequency, sample rate, gain state, and front-end amplification settings;
+  Sample  streaming:  transfer of raw complex baseband samples from the SDR device to
+the embedded host processor through the USB interface;
+  Buffer  management:  temporary storage and flow control to reduce the risk of sample
+loss during sustained acquisition;
+  Metadata association:  tagging of captured data with timing, configuration, and calibration-
+state information;
+  Signal  conditioning:   preliminary  preparation  of  the  wideband  observation,  including
+DC-offset mitigation, optional digital frequency translation, and other conditioning steps
+required before channelization and spectral analysis.
+– Channelization, Isolation \& Tracking:  The conditioned wideband observation is analyzed to de-
+tect active FM broadcast channels within the monitored span.  Detected channels are isolated
+and tracked over time to support stable downstream measurement.
+Its principal functions are:
+8; at 75 kHz peak deviation of a 1 kHz sine tone, with the 19 kHz stereo pilot present at
+its nominal level.  This definition shall be recorded in the measurement procedure.
+  Sub-carrier  verification.   The  19  kHz  pilot  tone  and  57  kHz  RDS  sub-carrier  shall  be
+independently  verified  in  magnitude.   Results  shall  be  reported  relative  to  the  main
+carrier level and stored as supporting evidence.
+– Channel Occupancy.  Detection threshold. The occupancy threshold shall be a site-calibrated
+offset above the locally verified noise floor, derived from the Tier 2 noise-floor verifica-
+tion required by Table 3 precondition (2).  A fixed default offset shall not be used for
+Conditional Compliance-Grade reporting.
+  Statistical  reporting.   Occupancy shall  be  reported  as  the  fraction of  observation  win-
+dows in which the channel is declared occupied under the documented detection rule,
+together with a confidence interval derived from the characterised false-alarm and missed-
+detection  probabilities.   The  reporting  model  shall  be  consistent  with  the  statistical
+probability framework required by Table 3 precondition (3).
+  Hysteresis  and  dwell.  Temporal hysteresis shall be applied to prevent false occupancy
+triggers from intermittent burst signals.  The hysteresis parameters shall be fixed in the
+version-controlled processing configuration per Table 3 precondition (4).
+Estimation Pipeline of Measurands
+Reference Carrier-Frequency Estimation Procedure.    The processing pipeline is specified
+for estimating the carrier centre frequency of an FM broadcast signal from complex baseband sam-
+ples acquired with a HackRF One software-defined radio receiver.  The implementation is organised
+as six sequential stages.  The pipeline is explicitly designed to retain intermediate quantities so that
+spectral estimates, candidate selection, carrier estimates, and confidence scores remain auditable
+and can be reinterpreted if calibration metadata are updated.
+– Stage 1:  Acquisition Configuration.  The acquisition stage constructs a validated hardware con-
+figuration for one HackRF capture session.  In the notebook implementation, the receiver is
+configured with
+f
+LO
+= f
+target
++ f
+off
+,   f
+off
+=
+f
+s
+4
+,
+so the observed FM channel is offset from the DC bin by one quarter of the sample rate.  The
+configuration validator additionally requires
+|f
+off
+|≥ 300 kHz,  |f
+off
+| + 150 kHz <
+f
+s
+2
+,
+so that the target FM allocation remains well separated from the DC region and inside the
+usable complex baseband span.
+The user-facing HackRF receive controls are:
+  RF amplifier state ampenable (internal +14 dB front-end amplifier),
+  IF gain ifgaindb in 8 dB steps over 0 to 40 dB,
+  baseband gain basebandgaindb in 2 dB steps over 0 to 62 dB.
+20; Reference Requirements for Full Compliance-Grade Deployments
+The following requirements apply to each measurand when compliance-grade or Conditional Compliance-
+Grade reporting is sought.  Requirements for measurands classified as Unsupported on the baseline
+HackRF One platform (field strength, ACLR) are scoped to upgraded or augmented platforms as
+defined in the Upgrade Paths section; they do not imply that these measurands are achievable on
+the unaugmented HackRF One.  All requirements are in addition to, not in substitution for, the
+preconditions listed in Table 3.
+– Carrier Frequency Error and Stability.  Reference clock traceability.  The SDR master clock
+shall be disciplined by a GPS-Disciplined Oscillator (GPSDO) or equivalent traceable
+reference providing a fractional frequency accuracy of ±1× 10
+−9
+or better.  An external
+Rubidium  oscillator  is  acceptable  only  when  it  is  itself  GPS-steered  or  carries  a  cur-
+rent  calibration  certificate  traceable  to  a  national  frequency  standard;  a  free-running
+Rubidium standard does not satisfy this requirement.
+  Estimation  algorithm.   Carrier  centre  frequency  shall  be  estimated  using  the  Stage  5
+pipeline  specified  in  the  Estimation  Pipeline  section  (parabolic  interpolation  primary,
+power centroid and edge midpoint as supporting estimators).  The power-weighted cen-
+troid  may  be  used  as  the  primary  estimator  only  when  the  peak-parabolic  method  is
+flagged invalid by the Stage 5 validity logic.
+  Guard-band decision logic.  The Guard-Band rule (Eq. 4) shall be applied using the 2 kHz
+carrier-frequency  tolerance  specified  by  FCC  Part  73  or  the  applicable  jurisdictional
+limit.   If |f
+cal
+− f
+target
+| + U ≤ T ,  the  result  is  compliant;  if |f
+cal
+− f
+target
+|− U > T ,
+non-compliant; otherwise uncertain and subject to the escalation procedure in Table 4.
+  Uncertainty-driven  escalation.   As  specified  in  Table  4,  results  in  the  uncertain  zone
+shall trigger a repeated measurement cycle with 4× extended averaging.  If the result
+remains uncertain after three attempts, it shall be logged as UNRESOLVED and escalated
+to operator review.
+  Reference drift monitoring.  The GPSDO lock state and 1 PPS timing validity shall be
+recorded continuously.  Any measurement acquired during a GPSDO unlock event shall
+be flagged UNCALIBRATED
+REFERENCE and classified as screening-grade.  Temperature of
+the SDR front-end shall be logged as a diagnostic field; if the node operates without a
+disciplined reference (e.g., during holdover), the estimated frequency drift based on the
+TCXO drift profile shall be recorded as an additional Type B uncertainty contribution.
+– Calibrated Received Power.  Reference  plane  traceability.   The  receive  chain  shall  undergo
+Tier 1 laboratory calibration establishing absolute gain accuracy at the defined reference
+plane (antenna port or SDR input bulkhead).  Tier 2 field verification shall confirm that
+the node has not drifted beyond acceptable limits relative to the Tier 1 state;  Tier 2
+alone does not establish absolute traceability.
+  Shared-risk  decision  logic.  Expanded uncertainty U  (k = 2) shall be computed in real
+time.  Values falling within the U -interval of the applicable ERP or received-power limit
+shall  be  flagged  for  verification  using  a  calibrated  mobile  unit  or  a  compliance-grade
+co-located node, per Table 4.
+  Integration method.  Calibrated received power shall be computed as the RMS-weighted
+PSD integral over the defined analysis bandwidth B (nominally 200 kHz for FM broad-
+cast), after gain-state and frequency-response correction.
+18.\\
+\end{itemize}
+
+\section}{Indexed Local Documents}
+This report was generated from the local document mount configured by \texttt{DOCS\_DIR}.
+
+\section*{1. 03SpectrumSensingFM0}
+\textbf{File:} 03SpectrumSensingFM0.pdf\\
+\textbf{SHA-256:} \texttt{3e283c6d13cf610d4276a7e64711ba4441938807abb99de3f772e2cc049cb1b2}\\
+\textbf{Size:} 488294 bytes\\
+\textbf{Indexed:} 2026-08-14T14:14:10.171Z
+
+\end{document}
